@@ -2,10 +2,10 @@
 
 A [BepInEx 5](https://github.com/BepInEx/BepInEx) plugin for [Message From Aliens](https://store.steampowered.com/app/1858720/Message_From_Aliens/) that labels untranslated compound words with the translations of their parts.
 
-A word is a compound when its two components are both other words. When a compound has no translation, its English label changes from `?` to `(<part 1> - <part 2>)`. Each part is:
+A word is a compound when its two components are both other words. When a compound has no translation, its English label changes from `?` to `<part 1> - <part 2>`. Each part is:
 
 - the part's translation, if it has one;
-- otherwise, if the part is itself a compound, its own hint in another layer of brackets, e.g. `((<part 1a> - <part 1b>) - <part 2>)`;
+- otherwise, if the part is itself a compound, its own hint in brackets, e.g. `(<part 1a> - <part 1b>) - <part 2>`;
 - otherwise `?+` if the part has translated parts that are not shown, such as parts beyond the `Depth` limit;
 - otherwise `?`.
 
@@ -27,6 +27,7 @@ Here you can see that the `L`, `seesaw`, and `| |` glyphs have been "translated"
 |---|---|---|
 | `Display.Separator` | `" - "` | Text between the two parts. |
 | `Display.Brackets` | `"()"` | Opening and closing brackets around each compound, as one string split in half, e.g. `"[]"` or `"<<>>"`. `""` for none. |
+| `Display.OmitOuterBrackets` | `true` | Leave out the brackets around the whole label, keeping them around nested compounds. |
 | `Display.Depth` | `-1` | Layers of compounds to expand. `-1` expands all layers, `0` disables hints, `1` shows only the translations of a word's direct parts. |
 | `Display.MarkHidden` | `true` | Show `?+` instead of `?` when the word has translated parts that are not shown. |
 

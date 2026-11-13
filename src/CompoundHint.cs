@@ -52,13 +52,14 @@ namespace CompoundTranslations
                 MarkHidden = Plugin.MarkHidden.Value,
             };
             var depth = Plugin.Depth.Value;
-            var hint = depth == 0 ? null : Build(word, depth, ctx);
+            var hint = depth == 0 ? null : Build(word, depth, ctx, !Plugin.OmitOuterBrackets.Value);
             return hint ?? (ctx.MarkHidden && HasTranslatedPart(word, ctx) ? UnknownWithHidden : null);
         }
 
         // levels: remaining bracket levels including this one; negative means unlimited.
+        // bracket: whether to wrap this level in brackets; nested levels always are.
         // Returns null when no translated word appears within those levels.
-        private static string Build(string word, int levels, Context ctx)
+        private static string Build(string word, int levels, Context ctx, bool bracket = true)
         {
             var info = GetCompound(word);
             if (info == null)
@@ -84,7 +85,12 @@ namespace CompoundTranslations
                 parts[i] = text ?? (ctx.MarkHidden && HasTranslatedPart(part, ctx) ? UnknownWithHidden : Unknown);
             }
             ctx.Path.Remove(word);
-            return found ? ctx.Open + parts[0] + ctx.Separator + parts[1] + ctx.Close : null;
+            if (!found)
+            {
+                return null;
+            }
+            var inner = parts[0] + ctx.Separator + parts[1];
+            return bracket ? ctx.Open + inner + ctx.Close : inner;
         }
 
         // Whether any word below this one, at any depth, is translated.

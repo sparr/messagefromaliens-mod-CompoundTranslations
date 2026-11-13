@@ -17,6 +17,7 @@ namespace CompoundTranslations
         internal static ConfigEntry<QuotedString> Brackets;
         internal static ConfigEntry<int> Depth;
         internal static ConfigEntry<bool> MarkHidden;
+        internal static ConfigEntry<bool> OmitOuterBrackets;
 
         private void Awake()
         {
@@ -27,6 +28,8 @@ namespace CompoundTranslations
                 "Text placed between the two parts of a compound word. Surrounding double quotes are removed, so spaces inside them are kept.");
             Brackets = Config.Bind("Display", "Brackets", new QuotedString("()"),
                 "Opening and closing brackets around each compound, as one string split in half, e.g. \"()\", \"[]\", or \"<<>>\". \"\" for none.");
+            OmitOuterBrackets = Config.Bind("Display", "OmitOuterBrackets", true,
+                "Leave out the brackets around the whole label, keeping them around nested compounds.");
             Depth = Config.Bind("Display", "Depth", -1,
                 new ConfigDescription(
                     "How many levels of compounds to expand. -1 expands all levels, 0 disables hints, 1 shows only the translations of a word's direct parts.",
