@@ -29,11 +29,15 @@ A sentence is one line of the game's text, which may wrap onto several rows. A r
 
 Run translations are saved in your save slot alongside the game's own translations, as entries whose names start with `compoundtranslations.sequence:`. The game ignores them. They stay in the save if the mod is removed.
 
-## Example
+## Examples
 
-![Screenshot as described](screenshot.png)
+![Screenshot as described](screenshot_compound.png)
 
 Here you can see that the `L`, `seesaw`, and `| |` glyphs have been "translated" by the player. The mod is assembling those into compound translations where possible.
+
+![Screenshot as described](screenshot_sequence.png)
+
+Here you can see one translated phrase that applies to a sequence of four glyphs.
 
 ## Configuration
 
