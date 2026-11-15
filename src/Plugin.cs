@@ -15,7 +15,7 @@ namespace CompoundTranslations
     {
         public const string Guid = "sparr.messagefromaliens.compoundtranslations";
         public const string Name = "Compound Translations";
-        public const string Version = "0.1.0";
+        public const string Version = "0.2.0";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<QuotedString> Separator;
