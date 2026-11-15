@@ -74,6 +74,8 @@ namespace CompoundTranslations
         private static bool lastVisible;
         // A run being edited that has no saved translation yet.
         private static Occurrence pending;
+        // The cells of a run whose glyph the mouse is over, shown as individual labels.
+        private static Occurrence revealed;
         private static Label editing;
         private static Action deferred;
         private static bool loggedError;
@@ -108,6 +110,7 @@ namespace CompoundTranslations
                 {
                     needsRender = true;
                 }
+                UpdateReveal();
                 if (dirty || needsRender)
                 {
                     Refresh();
@@ -151,6 +154,43 @@ namespace CompoundTranslations
             {
                 text.enabled = !hidden;
             }
+        }
+
+        // While the mouse is over a glyph inside a run, that run is set aside so the glyphs'
+        // own labels show. It stays set aside while the mouse is over any glyph it covered.
+        private static void UpdateReveal()
+        {
+            Occurrence next = null;
+            if (Plugin.RevealOnHover.Value && Enabled && Visible && editing == null && pending == null && !dirty)
+            {
+                var ac = HoveredGlyph();
+                if (ac != null && cellOf.TryGetValue(ac, out var at))
+                {
+                    if (revealed != null && revealed.Sentence == at.Sentence && at.Index >= revealed.Start && at.Index <= revealed.End)
+                    {
+                        next = revealed;
+                    }
+                    else if (covering.TryGetValue(ac, out var occ))
+                    {
+                        next = occ;
+                    }
+                }
+            }
+            if (next != revealed)
+            {
+                revealed = next;
+                needsRender = true;
+            }
+        }
+
+        private static AlienCharacter HoveredGlyph()
+        {
+            var cam = Camera.main;
+            if (cam == null || !Physics.Raycast(cam.ScreenPointToRay(Input.mousePosition), out var hit))
+            {
+                return null;
+            }
+            return hit.transform.GetComponentInParent<AlienCharacter>();
         }
 
         // StartEdit prefix. Returns false to replace the glyph's own edit with a run's.
@@ -404,6 +444,7 @@ namespace CompoundTranslations
             occurrences.Clear();
             var newCovering = new Dictionary<AlienCharacter, Occurrence>();
             pending = Rebind(pending);
+            revealed = Rebind(revealed);
             if (Enabled)
             {
                 var runs = LoadRuns();
@@ -413,6 +454,13 @@ namespace CompoundTranslations
                     if (pending != null && pending.Sentence == s)
                     {
                         Add(pending, taken, newCovering);
+                    }
+                    if (revealed != null && revealed.Sentence == s)
+                    {
+                        for (var i = revealed.Start; i <= revealed.End; i++)
+                        {
+                            taken[i] = true;
+                        }
                     }
                     for (var i = 0; i < s.Cells.Count; i++)
                     {

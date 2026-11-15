@@ -24,6 +24,7 @@ namespace CompoundTranslations
         internal static ConfigEntry<bool> MarkHidden;
         internal static ConfigEntry<bool> OmitOuterBrackets;
         internal static ConfigEntry<bool> Sequences;
+        internal static ConfigEntry<bool> RevealOnHover;
 
         private void Awake()
         {
@@ -49,6 +50,9 @@ namespace CompoundTranslations
             Sequences = Config.Bind("Sequences", "Enabled", true,
                 Described("Allow translations of runs of glyphs: while editing a label, shift+click another label in the same sentence.",
                     "translate word de sequence"));
+            RevealOnHover = Config.Bind("Sequences", "RevealOnHover", true,
+                Described("While the mouse is over a glyph inside a run, show the glyphs' own labels instead of the run's translation.",
+                    "near see word"));
 
             Config.SettingChanged += (_, _) =>
             {
