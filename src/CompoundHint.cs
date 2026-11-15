@@ -7,12 +7,19 @@ namespace CompoundTranslations
 {
     // AlienCharacter.UpdateEarthText() sets the English label under a glyph from
     // Global.savedata.dict, which holds "?" for untranslated words. For an untranslated
-    // word built from two other words, the label becomes "(<part 1> - <part 2>)" in the
-    // dimmed color the game uses for finished items. Each part is the part's translation,
-    // a nested hint for an untranslated compound part, or "?". A "?", including a whole
-    // label, becomes "?+" when its word has translated parts that the hint does not show.
+    // word built from two other words, the label becomes "<part 1> - <part 2>" in the
+    // dimmed color the game uses for finished items; for a word made of one glyph repeated,
+    // it becomes "<n>x <part>". Each part is the part's translation, a bracketed nested hint
+    // for an untranslated compound part, or "?". A "?", including a whole label, becomes
+    // "?+" when its word has translated parts that the hint does not show.
     internal static class CompoundHint
     {
+        // A word built from other words: two different parts, or one part repeated.
+        internal sealed class Structure
+        {
+            public string[] Parts;
+            public int Repeat;
+        }
         internal const string Unknown = "?";
         internal const string UnknownWithHidden = "?+";
 
@@ -39,7 +46,7 @@ namespace CompoundTranslations
         // otherwise "?+" when the word has translated parts at any depth and MarkHidden is on.
         internal static string GetHint(string word)
         {
-            if (string.IsNullOrEmpty(word) || IsTranslated(word) || GetCompound(word) == null)
+            if (string.IsNullOrEmpty(word) || IsTranslated(word) || GetStructure(word) == null)
             {
                 return null;
             }
@@ -61,17 +68,17 @@ namespace CompoundTranslations
         // Returns null when no translated word appears within those levels.
         private static string Build(string word, int levels, Context ctx, bool bracket = true)
         {
-            var info = GetCompound(word);
-            if (info == null)
+            var structure = GetStructure(word);
+            if (structure == null)
             {
                 return null;
             }
             ctx.Path.Add(word);
             var found = false;
-            var parts = new string[2];
-            for (var i = 0; i < 2; i++)
+            var parts = new string[structure.Parts.Length];
+            for (var i = 0; i < parts.Length; i++)
             {
-                var part = info.component[i];
+                var part = structure.Parts[i];
                 string text = null;
                 if (IsTranslated(part))
                 {
@@ -89,7 +96,7 @@ namespace CompoundTranslations
             {
                 return null;
             }
-            var inner = parts[0] + ctx.Separator + parts[1];
+            var inner = structure.Repeat > 0 ? structure.Repeat + "x " + parts[0] : parts[0] + ctx.Separator + parts[1];
             return bracket ? ctx.Open + inner + ctx.Close : inner;
         }
 
@@ -100,11 +107,11 @@ namespace CompoundTranslations
             {
                 return known;
             }
-            var info = GetCompound(word);
+            var structure = GetStructure(word);
             var result = false;
-            if (info != null && ctx.Path.Add(word))
+            if (structure != null && ctx.Path.Add(word))
             {
-                foreach (var part in info.component)
+                foreach (var part in structure.Parts)
                 {
                     if (IsTranslated(part) || (!ctx.Path.Contains(part) && HasTranslatedPart(part, ctx)))
                     {
@@ -134,21 +141,40 @@ namespace CompoundTranslations
             close = s.Substring(s.Length / 2);
         }
 
-        // A compound has two components that are both other words.
-        internal static AlienInfo GetCompound(string word)
+        // Returns null unless the word is built from other words. The game draws Double,
+        // VerticalDouble, Triple, and Quad words from one component word repeated, and
+        // LeftRight and UpDown words from two component words, which may be the same word.
+        internal static Structure GetStructure(string word)
         {
             var words = Global.alien_text;
             if (string.IsNullOrEmpty(word) || words == null || !words.TryGetValue(word, out var info) || info.component == null || info.component.Count < 2)
             {
                 return null;
             }
+            bool IsPart(string w) => !string.IsNullOrEmpty(w) && w != word && words.ContainsKey(w);
             var a = info.component[0];
             var b = info.component[1];
-            if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b) || a == word || b == word)
+            var repeat = info.characterstruct switch
+            {
+                PosRelation.Double => 2,
+                PosRelation.VerticalDouble => 2,
+                PosRelation.Triple => 3,
+                PosRelation.Quad => 4,
+                _ => 0,
+            };
+            if (repeat > 0)
+            {
+                return IsPart(a) ? new Structure { Parts = new[] { a }, Repeat = repeat } : null;
+            }
+            if (!IsPart(a) || !IsPart(b))
             {
                 return null;
             }
-            return words.ContainsKey(a) && words.ContainsKey(b) ? info : null;
+            if (a == b && (info.characterstruct == PosRelation.LeftRight || info.characterstruct == PosRelation.UpDown))
+            {
+                return new Structure { Parts = new[] { a }, Repeat = 2 };
+            }
+            return new Structure { Parts = new[] { a, b } };
         }
 
         // The game's label color and its dimmed color for finished items. The fallbacks copy
@@ -201,7 +227,7 @@ namespace CompoundTranslations
             foreach (var ac in slots)
             {
                 if (ac != null && ac != except && ac.showtxt && ac.gameObject.activeInHierarchy
-                    && GetCompound(ac.alien_txt) != null && !IsTranslated(ac.alien_txt))
+                    && GetStructure(ac.alien_txt) != null && !IsTranslated(ac.alien_txt))
                 {
                     ac.UpdateEarthText();
                 }
