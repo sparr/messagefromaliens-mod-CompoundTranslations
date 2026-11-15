@@ -151,8 +151,8 @@ namespace CompoundTranslations
                 return null;
             }
             bool IsPart(string w) => !string.IsNullOrEmpty(w) && w != word && words.ContainsKey(w);
-            var a = info.component[0];
-            var b = info.component[1];
+            var a = Canonical(info.component[0]);
+            var b = Canonical(info.component[1]);
             var repeat = info.characterstruct switch
             {
                 PosRelation.Double => 2,
@@ -174,6 +174,20 @@ namespace CompoundTranslations
                 return new Structure { Parts = new[] { a }, Repeat = 2 };
             }
             return new Structure { Parts = new[] { a, b } };
+        }
+
+        // The word a component stands for. A few components are separate entries that draw the
+        // same glyph as another word and name it in their rename column; the game lists such a
+        // component under that word, and so does the hint.
+        private static string Canonical(string part)
+        {
+            var words = Global.alien_text;
+            if (string.IsNullOrEmpty(part) || !words.TryGetValue(part, out var info))
+            {
+                return part;
+            }
+            var rename = info.rename;
+            return !string.IsNullOrEmpty(rename) && rename != part && words.ContainsKey(rename) ? rename : part;
         }
 
         // The game's label color and its dimmed color for finished items. The fallbacks copy
