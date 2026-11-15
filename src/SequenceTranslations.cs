@@ -63,6 +63,9 @@ namespace CompoundTranslations
         private static Dictionary<AlienCharacter, Occurrence> covering = new Dictionary<AlienCharacter, Occurrence>();
         private static readonly List<Label> labels = new List<Label>();
         private static readonly HashSet<AlienCharacter> suppressEndEdit = new HashSet<AlienCharacter>();
+        // Glyphs whose edit was replaced by a run's. The game never started editing them, so any
+        // end of edit they report, whenever Unity sends it, must not save their field's text.
+        private static readonly HashSet<AlienCharacter> replaced = new HashSet<AlienCharacter>();
 
         // The glyph grid changed since the last scan, so scan data is stale.
         private static bool dirty = true;
@@ -133,6 +136,23 @@ namespace CompoundTranslations
         // StartEdit prefix. Returns false to replace the glyph's own edit with a run's.
         internal static bool BeforeStartEdit(AlienCharacter ac)
         {
+            var proceed = StartsOwnEdit(ac);
+            if (ac != null)
+            {
+                if (proceed)
+                {
+                    replaced.Remove(ac);
+                }
+                else
+                {
+                    replaced.Add(ac);
+                }
+            }
+            return proceed;
+        }
+
+        private static bool StartsOwnEdit(AlienCharacter ac)
+        {
             if (!Enabled || dirty || ac == null || !cellOf.TryGetValue(ac, out var at))
             {
                 return true;
@@ -158,7 +178,7 @@ namespace CompoundTranslations
             return true;
         }
 
-        internal static bool IsSuppressed(AlienCharacter ac) => ac != null && suppressEndEdit.Contains(ac);
+        internal static bool IsSuppressed(AlienCharacter ac) => ac != null && (suppressEndEdit.Contains(ac) || replaced.Contains(ac));
 
         // EndEdit postfix for a glyph's own label.
         internal static void AfterGlyphEndEdit(AlienCharacter ac)
