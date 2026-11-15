@@ -1,7 +1,12 @@
+using System.Collections.Generic;
+using System.Reflection;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+
+// The mod's name in glyphs, as game word IDs, for Mod Settings and any other mod that lists mods.
+[assembly: AssemblyMetadata("MessageFromAliens.Name", "translate radicial")]
 
 namespace CompoundTranslations
 {
@@ -25,22 +30,37 @@ namespace CompoundTranslations
 
             QuotedString.Register();
             Separator = Config.Bind("Display", "Separator", new QuotedString(" - "),
-                "Text placed between the two parts of a compound word. Surrounding double quotes are removed, so spaces inside them are kept.");
+                Described("Text placed between the two parts of a compound word. Surrounding double quotes are removed, so spaces inside them are kept.",
+                    "symbol between radicial", quoted: true));
             Brackets = Config.Bind("Display", "Brackets", new QuotedString("()"),
-                "Opening and closing brackets around each compound, as one string split in half, e.g. \"()\", \"[]\", or \"<<>>\". \"\" for none.");
+                Described("Opening and closing brackets around each compound, as one string split in half, e.g. \"()\", \"[]\", or \"<<>>\". \"\" for none.",
+                    "radicial de edge", quoted: true));
             OmitOuterBrackets = Config.Bind("Display", "OmitOuterBrackets", true,
-                "Leave out the brackets around the whole label, keeping them around nested compounds.");
+                Described("Leave out the brackets around the whole label, keeping them around nested compounds.", "tohide word de edge"));
             Depth = Config.Bind("Display", "Depth", -1,
-                new ConfigDescription(
+                Described(
                     "How many levels of compounds to expand. -1 expands all levels, 0 disables hints, 1 shows only the translations of a word's direct parts.",
-                    new AcceptableValueRange<int>(-1, 100)));
+                    "radicial de depth", new AcceptableValueRange<int>(-1, 100)));
             MarkHidden = Config.Bind("Display", "MarkHidden", true,
-                "Show ?+ instead of ? for an untranslated word, or the whole label, when it has translated parts that are not shown, such as parts beyond the Depth limit.");
+                Described("Show ?+ instead of ? for an untranslated word, or the whole label, when it has translated parts that are not shown, such as parts beyond the Depth limit.",
+                    "mark tohide de radicial"));
 
             Config.SettingChanged += (_, _) => CompoundHint.RefreshVisible(null);
 
             new Harmony(Guid).PatchAll(typeof(Plugin).Assembly);
             Log.LogInfo($"{Name} {Version} loaded");
+        }
+
+        // Mod Settings shows a setting tagged with its name in glyphs, as game word IDs.
+        // Quoted marks a QuotedString setting, so Mod Settings edits it without the quotes.
+        private static ConfigDescription Described(string description, string glyphs, AcceptableValueBase values = null, bool quoted = false)
+        {
+            var tags = new Dictionary<string, string> { ["MessageFromAliens.Label"] = glyphs };
+            if (quoted)
+            {
+                tags["MessageFromAliens.Quoted"] = "true";
+            }
+            return new ConfigDescription(description, values, tags);
         }
     }
 }

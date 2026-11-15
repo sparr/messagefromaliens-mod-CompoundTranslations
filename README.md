@@ -31,6 +31,8 @@ Here you can see that the `L`, `seesaw`, and `| |` glyphs have been "translated"
 | `Display.Depth` | `-1` | Layers of compounds to expand. `-1` expands all layers, `0` disables hints, `1` shows only the translations of a word's direct parts. |
 | `Display.MarkHidden` | `true` | Show `?+` instead of `?` when the word has translated parts that are not shown. |
 
+Each setting is tagged with its name in glyphs, and the mod names itself in glyphs, so Mod Settings can show them in the game.
+
 BepInEx trims whitespace from setting values, so `Separator` and `Brackets` are written in double quotes, which are removed when read. Quotes are optional when the value has no leading or trailing spaces.
 
 ## Requirements
