@@ -127,9 +127,29 @@ namespace CompoundTranslations
         // UpdateEarthText postfix: keep the labels of glyphs inside a run hidden.
         internal static void AfterUpdateEarthText(AlienCharacter ac)
         {
-            if (!dirty && ac?.txt != null && !ac.txt.isFocused && covering.ContainsKey(ac))
+            if (!dirty && ac != null && covering.ContainsKey(ac))
             {
-                ac.txt.text = "";
+                SetHidden(ac, true);
+            }
+        }
+
+        // Hides or shows a glyph's own label without touching its text. The game saves the
+        // field's text as the glyph's translation whenever an edit of it ends, so clearing the
+        // text to hide it could erase the translation.
+        private static void SetHidden(AlienCharacter ac, bool hidden)
+        {
+            var text = ac?.txt?.textComponent;
+            if (text == null)
+            {
+                return;
+            }
+            if (hidden && ac.txt.isFocused)
+            {
+                hidden = false;
+            }
+            if (text.enabled == hidden)
+            {
+                text.enabled = !hidden;
             }
         }
 
@@ -427,17 +447,14 @@ namespace CompoundTranslations
             covering = newCovering;
             foreach (var ac in old.Keys)
             {
-                if (!covering.ContainsKey(ac) && ac != null && ac.gameObject.activeInHierarchy && ac.showtxt)
+                if (ac != null && !covering.ContainsKey(ac))
                 {
-                    ac.UpdateEarthText();
+                    SetHidden(ac, false);
                 }
             }
             foreach (var ac in covering.Keys)
             {
-                if (ac.txt != null && !ac.txt.isFocused)
-                {
-                    ac.txt.text = "";
-                }
+                SetHidden(ac, true);
             }
         }
 
