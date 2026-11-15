@@ -2,6 +2,10 @@
 
 A [BepInEx 5](https://github.com/BepInEx/BepInEx) plugin for [Message From Aliens](https://store.steampowered.com/app/1858720/Message_From_Aliens/) that labels untranslated compound words with the translations of their parts, and lets you translate runs of glyphs as a unit.
 
+## Installing
+
+Install BepInEx first, if you haven't already, as described under [Requirements](#requirements). Then unzip the release zip into the game folder, the one that holds `MessageFromAliens.exe`. In Steam, right-click the game and choose Manage, then Browse local files, to open it. The zip holds `BepInEx/plugins/CompoundTranslations/`, so the mod lands in BepInEx's plugins folder. To update, unzip a newer release over it. To uninstall, delete `BepInEx/plugins/CompoundTranslations/`.
+
 ## Compound words
 
 A word is a compound when its two components are both other words, or when it is one other word repeated two, three, or four times. When a compound has no translation, its English label changes from `?` to `<part 1> - <part 2>`, or `<n>x <part>` for a repeat (such as `3x small`). A word whose two components are the same word side by side or stacked also counts as a repeat. Each part is:
