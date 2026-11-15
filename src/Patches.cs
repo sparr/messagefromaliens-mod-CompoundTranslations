@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Reflection;
 using HarmonyLib;
 
 namespace CompoundTranslations
@@ -11,6 +13,7 @@ namespace CompoundTranslations
             try
             {
                 CompoundHint.Apply(__instance);
+                SequenceTranslations.AfterUpdateEarthText(__instance);
             }
             catch (Exception e)
             {
@@ -19,10 +22,24 @@ namespace CompoundTranslations
         }
     }
 
-    // StartEdit clears the label for untranslated words; type in the normal color.
     [HarmonyPatch(typeof(AlienCharacter), nameof(AlienCharacter.StartEdit))]
     internal static class StartEditPatch
     {
+        // Shift+click extends the selection into a run; clicking a glyph inside a run edits the run.
+        private static bool Prefix(AlienCharacter __instance)
+        {
+            try
+            {
+                return SequenceTranslations.BeforeStartEdit(__instance);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"StartEdit prefix failed: {e}");
+                return true;
+            }
+        }
+
+        // StartEdit clears the label for untranslated words; type in the normal color.
         private static void Postfix(AlienCharacter __instance)
         {
             if (__instance?.txt != null)
@@ -32,14 +49,27 @@ namespace CompoundTranslations
         }
     }
 
-    // The game only refreshes labels of the edited word; also refresh visible compounds.
     [HarmonyPatch(typeof(AlienCharacter), nameof(AlienCharacter.EndEdit))]
     internal static class EndEditPatch
     {
-        private static void Postfix(AlienCharacter __instance)
+        // Skip the save when the edit was replaced by a run's edit, so the label text the
+        // field still holds is not written as a translation.
+        private static bool Prefix(AlienCharacter __instance, out bool __state)
         {
+            __state = SequenceTranslations.IsSuppressed(__instance);
+            return !__state;
+        }
+
+        // The game only refreshes labels of the edited word; also refresh visible compounds.
+        private static void Postfix(AlienCharacter __instance, bool __state)
+        {
+            if (__state)
+            {
+                return;
+            }
             try
             {
+                SequenceTranslations.AfterGlyphEndEdit(__instance);
                 CompoundHint.RefreshVisible(__instance);
             }
             catch (Exception e)
@@ -47,5 +77,23 @@ namespace CompoundTranslations
                 Plugin.Log.LogError($"EndEdit postfix failed: {e}");
             }
         }
+    }
+
+    // Any redraw of glyphs makes the sequence scan stale.
+    [HarmonyPatch]
+    internal static class WritePatch
+    {
+        private static IEnumerable<MethodBase> TargetMethods()
+        {
+            foreach (var m in AccessTools.GetDeclaredMethods(typeof(Draw)))
+            {
+                if (m.Name == nameof(Draw.Write) || m.Name == nameof(Draw.ClearSelected))
+                {
+                    yield return m;
+                }
+            }
+        }
+
+        private static void Postfix() => SequenceTranslations.MarkDirty();
     }
 }

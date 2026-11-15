@@ -23,6 +23,7 @@ namespace CompoundTranslations
         internal static ConfigEntry<int> Depth;
         internal static ConfigEntry<bool> MarkHidden;
         internal static ConfigEntry<bool> OmitOuterBrackets;
+        internal static ConfigEntry<bool> Sequences;
 
         private void Awake()
         {
@@ -45,7 +46,15 @@ namespace CompoundTranslations
                 Described("Show ?+ instead of ? for an untranslated word, or the whole label, when it has translated parts that are not shown, such as parts beyond the Depth limit.",
                     "mark tohide de radicial"));
 
-            Config.SettingChanged += (_, _) => CompoundHint.RefreshVisible(null);
+            Sequences = Config.Bind("Sequences", "Enabled", true,
+                Described("Allow translations of runs of glyphs: while editing a label, shift+click another label in the same sentence.",
+                    "translate word de sequence"));
+
+            Config.SettingChanged += (_, _) =>
+            {
+                CompoundHint.RefreshVisible(null);
+                SequenceTranslations.MarkChanged();
+            };
 
             new Harmony(Guid).PatchAll(typeof(Plugin).Assembly);
             Log.LogInfo($"{Name} {Version} loaded");
@@ -62,5 +71,9 @@ namespace CompoundTranslations
             }
             return new ConfigDescription(description, values, tags);
         }
+
+        // Plugin objects must not add components or start coroutines from Awake, which runs
+        // during Application's static constructor; Unity crashes. LateUpdate is safe.
+        private void LateUpdate() => SequenceTranslations.Tick();
     }
 }
