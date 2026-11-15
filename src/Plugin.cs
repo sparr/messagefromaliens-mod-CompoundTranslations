@@ -17,6 +17,18 @@ namespace CompoundTranslations
         public const string Name = "Compound Translations";
         public const string Version = "0.2.0";
 
+        // The words, as game word IDs, that name position translations: the setting's label in
+        // Mod Settings and the button on a glyph's information panel.
+        internal const string PositionGlyphs = "translate word position";
+
+        // Between the glyph and PositionGlyphs in the position translations panel's title.
+        internal const string PossessiveGlyph = "de";
+
+        // Shown after PositionGlyphs on a glyph's information panel: whether the glyph has any
+        // position translations.
+        internal const string PositionsSetGlyph = "yes";
+        internal const string PositionsUnsetGlyph = "no";
+
         internal static ManualLogSource Log;
         internal static ConfigEntry<QuotedString> Separator;
         internal static ConfigEntry<QuotedString> Brackets;
@@ -25,6 +37,7 @@ namespace CompoundTranslations
         internal static ConfigEntry<bool> OmitOuterBrackets;
         internal static ConfigEntry<bool> Sequences;
         internal static ConfigEntry<bool> RevealOnHover;
+        internal static ConfigEntry<bool> Positions;
 
         private void Awake()
         {
@@ -54,10 +67,15 @@ namespace CompoundTranslations
                 Described("While the mouse is over a glyph inside a run, show the glyphs' own labels instead of the run's translation.",
                     "near see word"));
 
+            Positions = Config.Bind("Positions", "Enabled", true,
+                Described("Add a button to a glyph's information panel that opens translations for its positions in compounds: left or right, top or bottom, and outside or inside. Hints show those in place of its translation.",
+                    PositionGlyphs));
+
             Config.SettingChanged += (_, _) =>
             {
                 CompoundHint.RefreshVisible(null);
                 SequenceTranslations.MarkChanged();
+                PositionalTranslations.SettingChanged();
             };
 
             new Harmony(Guid).PatchAll(typeof(Plugin).Assembly);
@@ -78,6 +96,10 @@ namespace CompoundTranslations
 
         // Plugin objects must not add components or start coroutines from Awake, which runs
         // during Application's static constructor; Unity crashes. LateUpdate is safe.
-        private void LateUpdate() => SequenceTranslations.Tick();
+        private void LateUpdate()
+        {
+            SequenceTranslations.Tick();
+            PositionalTranslations.Tick();
+        }
     }
 }

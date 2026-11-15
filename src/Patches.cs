@@ -96,4 +96,28 @@ namespace CompoundTranslations
 
         private static void Postfix() => SequenceTranslations.MarkDirty();
     }
+
+    // A word's information text gets the glyphs that open its position translations.
+    [HarmonyPatch(typeof(Draw), nameof(Draw.PushLeftText))]
+    internal static class PushLeftTextPatch
+    {
+        private static void Prefix(string title, ref string info)
+        {
+            try
+            {
+                PositionalTranslations.Decorate(title, ref info);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"PushLeftText: {e}");
+            }
+        }
+    }
+
+    // A redraw may change the left panel, so the position button and panel are rebuilt.
+    [HarmonyPatch(typeof(Draw), nameof(Draw.UpdateText))]
+    internal static class UpdateTextPatch
+    {
+        private static void Postfix() => PositionalTranslations.MarkDirty();
+    }
 }

@@ -18,6 +18,7 @@ namespace CompoundTranslations
         {
             public string[] Parts;
             public int Repeat;
+            public PosRelation Relation;
         }
         internal const string Unknown = "?";
         internal const string UnknownWithHidden = "?+";
@@ -78,12 +79,13 @@ namespace CompoundTranslations
             for (var i = 0; i < parts.Length; i++)
             {
                 var part = structure.Parts[i];
-                string text = null;
-                if (IsTranslated(part))
+                // A positional translation takes the place of the part's own translation.
+                var text = PositionalTranslation(structure, i);
+                if (text == null && IsTranslated(part))
                 {
                     text = Global.savedata.dict[part].Trim();
                 }
-                else if (levels != 1 && !ctx.Path.Contains(part))
+                else if (text == null && levels != 1 && !ctx.Path.Contains(part))
                 {
                     text = Build(part, levels < 0 ? levels : levels - 1, ctx);
                 }
@@ -110,9 +112,10 @@ namespace CompoundTranslations
             var result = false;
             if (structure != null && ctx.Path.Add(word))
             {
-                foreach (var part in structure.Parts)
+                for (var i = 0; i < structure.Parts.Length; i++)
                 {
-                    if (IsTranslated(part) || (!ctx.Path.Contains(part) && HasTranslatedPart(part, ctx)))
+                    var part = structure.Parts[i];
+                    if (IsTranslated(part) || PositionalTranslation(structure, i) != null || (!ctx.Path.Contains(part) && HasTranslatedPart(part, ctx)))
                     {
                         result = true;
                         break;
@@ -123,6 +126,10 @@ namespace CompoundTranslations
             ctx.HasTranslatedPart[word] = result;
             return result;
         }
+
+        // The part's translation for its position in a two-part compound, or null.
+        private static string PositionalTranslation(Structure structure, int i) =>
+            structure.Repeat > 0 ? null : PositionalTranslations.Get(structure.Parts[i], PositionalTranslations.SlotFor(structure.Relation, i));
 
         private static void GetBrackets(out string open, out string close)
         {
@@ -173,13 +180,13 @@ namespace CompoundTranslations
             {
                 return new Structure { Parts = new[] { a }, Repeat = 2 };
             }
-            return new Structure { Parts = new[] { a, b } };
+            return new Structure { Parts = new[] { a, b }, Relation = info.characterstruct };
         }
 
         // The word a component stands for. A few components are separate entries that draw the
         // same glyph as another word and name it in their rename column; the game lists such a
         // component under that word, and so does the hint.
-        private static string Canonical(string part)
+        internal static string Canonical(string part)
         {
             var words = Global.alien_text;
             if (string.IsNullOrEmpty(part) || !words.TryGetValue(part, out var info))

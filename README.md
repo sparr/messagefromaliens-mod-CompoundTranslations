@@ -1,6 +1,6 @@
 # Compound Translations
 
-A [BepInEx 5](https://github.com/BepInEx/BepInEx) plugin for [Message From Aliens](https://store.steampowered.com/app/1858720/Message_From_Aliens/) that labels untranslated compound words with the translations of their parts, and lets you translate runs of glyphs as a unit.
+A [BepInEx 5](https://github.com/BepInEx/BepInEx) plugin for [Message From Aliens](https://store.steampowered.com/app/1858720/Message_From_Aliens/) that labels untranslated compound words with the translations of their parts, lets you translate runs of glyphs as a unit, and lets a glyph have its own translation for each position it takes in a compound.
 
 ## Installing
 
@@ -19,6 +19,10 @@ A hint is shown only if at least one translated word appears in it. Otherwise th
 
 The hint is display-only. Clicking the label to edit it starts from an empty field as usual, and the hint is never saved as a translation. Translating a word, or changing a setting at runtime, refreshes the visible hints.
 
+![Screenshot as described](screenshot_compound.png)
+
+Here you can see that the `L`, `seesaw`, and `| |` glyphs have been "translated" by the player. The mod is assembling those into compound translations where possible.
+
 ## Sequence translations
 
 While editing a glyph's label, shift+click the label of another glyph in the same sentence. Both glyphs and every glyph between them are selected: their own labels are hidden, and one label centered below the run opens for editing. While it is being edited, a bracket in the label color marks the run: a line through the label on each side of the text, spanning the run, with ticks up toward the glyphs at its ends. Shift+click again to extend the selection. Shift+clicking a run's translation adds the whole run to the selection.
@@ -29,15 +33,23 @@ A sentence is one line of the game's text, which may wrap onto several rows. A r
 
 Run translations are saved in your save slot alongside the game's own translations, as entries whose names start with `compoundtranslations.sequence:`. The game ignores them. They stay in the save if the mod is removed.
 
-## Examples
-
-![Screenshot as described](screenshot_compound.png)
-
-Here you can see that the `L`, `seesaw`, and `| |` glyphs have been "translated" by the player. The mod is assembling those into compound translations where possible.
-
 ![Screenshot as described](screenshot_sequence.png)
 
 Here you can see one translated phrase that applies to a sequence of four glyphs.
+
+## Position translations
+
+A glyph can have a different translation for each place it takes in a compound of two different words. A glyph's information panel, shown by right-clicking it, gets a new line above the definitions, which will open the positional translation interface and indicate if it's already filled out.
+
+The new interface allows specifying a translation for a glyph that will be used in a compound word partial translation if the sub glyph appears in a particular position. The panel shows only the positions the glyph takes in compounds you have encountered.
+
+Position translations are saved in your save slot alongside the game's own translations, as entries whose names start with `compoundtranslations.position:`. The game ignores them. They stay in the save if the mod is removed.
+
+<details>
+  <summary>SPOILER WARNING: Screenshot of positional translations reveals some alternate meanings of a common early game glyph</summary>
+  
+  ![Screenshot as described](screenshot_positional.png)
+</details>
 
 ## Configuration
 
@@ -52,6 +64,7 @@ Here you can see one translated phrase that applies to a sequence of four glyphs
 | `Display.MarkHidden` | `true` | Show `?+` instead of `?` when the word has translated parts that are not shown. |
 | `Sequences.Enabled` | `true` | Show and allow sequence translations. |
 | `Sequences.RevealOnHover` | `true` | While the mouse is over a glyph inside a run, show the glyphs' own labels instead of the run's translation. |
+| `Positions.Enabled` | `true` | Show the glyphs that open the position translations panel, and use position translations in hints. |
 
 Each setting is tagged with its name in glyphs, and the mod names itself in glyphs, so Mod Settings can show them in the game.
 
@@ -88,5 +101,7 @@ For a game folder outside a Steam library, set `GameDir` to the game folder the 
 | `AlienCharacter.StartEdit` | Prefix: on shift+click, or on a glyph inside a run, skips the game's edit and opens the run's label instead. Postfix: restores the normal label color while editing. |
 | `AlienCharacter.EndEdit` | Prefix: skips the save for a glyph whose edit was replaced by a run's. Postfix: refreshes the labels of visible untranslated compounds. |
 | `Draw.Write`, `Draw.ClearSelected` | Postfix: marks the glyph layout as changed, so runs are found again on the next frame. |
+| `Draw.PushLeftText` | Prefix: adds the glyphs that open the position translations panel to a word's information text. |
+| `Draw.UpdateText` | Postfix: marks the left panel as changed, so the position translations panel is drawn again on the next frame. |
 
 Each applied hint is logged at the `Debug` level.
