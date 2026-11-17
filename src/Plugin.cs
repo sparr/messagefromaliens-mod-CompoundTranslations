@@ -15,7 +15,7 @@ namespace CompoundTranslations
     {
         public const string Guid = "sparr.messagefromaliens.compoundtranslations";
         public const string Name = "Compound Translations";
-        public const string Version = "0.3.0";
+        public const string Version = "0.3.1";
 
         // The words, as game word IDs, that name position translations: the setting's label in
         // Mod Settings and the button on a glyph's information panel.
