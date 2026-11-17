@@ -39,7 +39,7 @@ Here you can see one translated phrase that applies to a sequence of four glyphs
 
 ## Position translations
 
-A glyph can have a different translation for each place it takes in a compound of two different words. A glyph's information panel, shown by right-clicking it, gets a new line above the definitions, which will open the positional translation interface and indicate if it's already filled out.
+A glyph can have a different translation for each place it takes in a compound of two different words. A glyph's information panel, shown by right-clicking it, gets a new line above the definitions, underlined like a menu link, which will open the positional translation interface and indicate if it's already filled out.
 
 The new interface allows specifying a translation for a glyph that will be used in a compound word partial translation if the sub glyph appears in a particular position. The panel shows only the positions the glyph takes in compounds you have encountered.
 

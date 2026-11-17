@@ -70,6 +70,8 @@ namespace CompoundTranslations
         }
 
         private static readonly List<Shape> shapes = new List<Shape>();
+        // Underlines below the button glyphs, drawn like the game's menu links.
+        private static readonly List<LineRenderer> underlines = new List<LineRenderer>();
         private static readonly List<Field> fields = new List<Field>();
         // The word whose information panel, with the button glyphs, is shown, or null.
         private static string buttonWord;
@@ -143,6 +145,22 @@ namespace CompoundTranslations
             RefreshHistory();
         }
 
+        // Splits a left panel history entry. PushLeftText joins title and text with "&", or with
+        // "&&" for text it does not parse, as a word's information panel is.
+        private static bool SplitEntry(string entry, out string title, out string sep, out string info)
+        {
+            var i = entry.IndexOf('&');
+            if (i < 0)
+            {
+                title = sep = info = null;
+                return false;
+            }
+            title = entry.Substring(0, i);
+            sep = string.CompareOrdinal(entry, i + 1, "&", 0, 1) == 0 ? "&&" : "&";
+            info = entry.Substring(i + sep.Length);
+            return true;
+        }
+
         // Rewrites the button line of the information panels already in the left panel's
         // history, so a changed setting or translation shows in them too.
         private static void RefreshHistory()
@@ -155,19 +173,15 @@ namespace CompoundTranslations
             var changed = false;
             for (var i = 0; i < m.text_history.Count; i++)
             {
-                var entry = m.text_history[i];
-                var sep = entry.IndexOf('&');
-                if (sep < 0)
+                if (!SplitEntry(m.text_history[i], out var title, out var sep, out var info))
                 {
                     continue;
                 }
-                var title = entry.Substring(0, sep);
-                var info = entry.Substring(sep + 1);
                 var next = Strip(info);
                 Decorate(title, ref next);
                 if (next != info)
                 {
-                    m.text_history[i] = title + "&" + next;
+                    m.text_history[i] = title + sep + next;
                     changed |= i == m.currenttext;
                 }
             }
@@ -255,13 +269,10 @@ namespace CompoundTranslations
                 return null;
             }
             var entry = m.text_history[m.currenttext];
-            var sep = entry.IndexOf('&');
-            if (sep < 0)
+            if (!SplitEntry(entry, out var title, out _, out var info))
             {
                 return null;
             }
-            var title = entry.Substring(0, sep);
-            var info = entry.Substring(sep + 1);
             if (info == Marker)
             {
                 // The panel's title is the word followed by PanelTitle's other glyphs.
@@ -319,6 +330,14 @@ namespace CompoundTranslations
                 }
             }
             shapes.Clear();
+            foreach (var u in underlines)
+            {
+                if (u != null)
+                {
+                    UnityEngine.Object.Destroy(u.gameObject);
+                }
+            }
+            underlines.Clear();
             buttonWord = null;
             foreach (var f in fields)
             {
@@ -340,6 +359,32 @@ namespace CompoundTranslations
             else
             {
                 buttonWord = word;
+                UnderlineButton(m);
+            }
+        }
+
+        // Underlines each button glyph the way Draw.Write underlines a menu link's glyphs: a
+        // line 0.92 below the glyph's center in color 3, spanning its cell, but starting 0.45
+        // left of center in the panel's first column.
+        private static void UnderlineButton(Draw m)
+        {
+            var slots = m.alien_slots;
+            if (slots == null)
+            {
+                return;
+            }
+            for (var x = 0; x < slots.GetLength(0); x++)
+            {
+                for (var y = 0; y < slots.GetLength(1); y++)
+                {
+                    var ac = slots[x, y];
+                    if (ac == null || ac.sp == null || !ac.gameObject.activeInHierarchy || !IsButtonGlyph(ac))
+                    {
+                        continue;
+                    }
+                    var p = ac.sp.transform.position;
+                    underlines.Add(m.DrawLineRenderer(p + new Vector3(x == 0 ? -0.45f : -0.5f, -0.92f), p + new Vector3(0.5f, -0.92f), 3));
+                }
             }
         }
 
