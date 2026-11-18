@@ -308,6 +308,14 @@ namespace CompoundTranslations
                         break;
                     }
                 }
+                // The clicked label takes the selection back later this frame, when
+                // TMP_InputField.LateUpdate finishes the activation the click started. Refresh
+                // may have given it another run, so give it the new run instead.
+                if (target != null && fromLabel?.Field != null && target != fromLabel)
+                {
+                    SwapRuns(target, fromLabel);
+                    target = fromLabel;
+                }
                 if (fromGlyph != null)
                 {
                     suppressEndEdit.Add(fromGlyph);
@@ -330,6 +338,26 @@ namespace CompoundTranslations
                 }
                 fromGlyph?.UpdateEarthText();
             };
+        }
+
+        // Exchanges which runs two labels show. Positions follow in PositionLabels.
+        private static void SwapRuns(Label a, Label b)
+        {
+            (a.Occ, b.Occ) = (b.Occ, a.Occ);
+            var text = a.Field.text;
+            a.Field.text = b.Field.text;
+            b.Field.text = text;
+            var active = a.Field.gameObject.activeSelf;
+            a.Field.gameObject.SetActive(b.Field.gameObject.activeSelf);
+            b.Field.gameObject.SetActive(active);
+            if (a.Occ == null)
+            {
+                SetLines(a, Array.Empty<Vector3[]>());
+            }
+            if (b.Occ == null)
+            {
+                SetLines(b, Array.Empty<Vector3[]>());
+            }
         }
 
         private static string Translation(string key)
