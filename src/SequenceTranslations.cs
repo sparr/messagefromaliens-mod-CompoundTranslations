@@ -110,8 +110,14 @@ namespace CompoundTranslations
                 {
                     needsRender = true;
                 }
+                // Rescan before deciding what to reveal, so a redraw does not drop the reveal
+                // for a frame.
+                if (dirty)
+                {
+                    Refresh();
+                }
                 UpdateReveal();
-                if (dirty || needsRender)
+                if (needsRender)
                 {
                     Refresh();
                 }
@@ -161,7 +167,7 @@ namespace CompoundTranslations
         private static void UpdateReveal()
         {
             Occurrence next = null;
-            if (Plugin.RevealOnHover.Value && Enabled && Visible && editing == null && pending == null && !dirty)
+            if (Plugin.RevealOnHover.Value && Enabled && Visible && editing == null && pending == null)
             {
                 var ac = HoveredGlyph();
                 if (ac != null && cellOf.TryGetValue(ac, out var at))
