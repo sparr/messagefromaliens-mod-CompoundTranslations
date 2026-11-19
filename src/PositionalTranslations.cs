@@ -472,6 +472,10 @@ namespace CompoundTranslations
             {
                 Plugin.Log.LogError($"Positional translation edit: {e}");
             }
+            finally
+            {
+                SequenceTranslations.Release(f.Input);
+            }
         }
 
         // Builds the compound the way AlienInfo.GetCharacter builds a real one with the given
@@ -553,6 +557,10 @@ namespace CompoundTranslations
             input.richText = false;
             input.onSelect.RemoveAllListeners();
             input.onEndEdit.RemoveAllListeners();
+            // Arrow keys stay in the field instead of moving the selection to a nearby label.
+            var nav = input.navigation;
+            nav.mode = UnityEngine.UI.Navigation.Mode.None;
+            input.navigation = nav;
             go.SetActive(false);
             return input;
         }

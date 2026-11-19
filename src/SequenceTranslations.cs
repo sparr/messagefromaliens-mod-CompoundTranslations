@@ -97,6 +97,18 @@ namespace CompoundTranslations
         internal static bool InUse(TMP_InputField field) =>
             field != null && (field.isFocused || (EventSystem.current != null && EventSystem.current.currentSelectedGameObject == field.gameObject));
 
+        // An edit that ends without a click, as on Enter or Escape, leaves the field selected,
+        // so the next key would act on it. The game's labels let go the same way in
+        // AlienCharacter.EndEdit.
+        internal static void Release(TMP_InputField field)
+        {
+            var es = EventSystem.current;
+            if (field != null && es != null && !es.alreadySelecting && !field.isFocused && es.currentSelectedGameObject == field.gameObject)
+            {
+                es.SetSelectedGameObject(null);
+            }
+        }
+
         // A value of "?", which the game writes for an untranslated word, is no translation.
         internal static bool IsBlank(string value) => string.IsNullOrWhiteSpace(value) || value.Trim() == "?";
 
@@ -737,6 +749,10 @@ namespace CompoundTranslations
             field.textComponent.color = CompoundHint.NormalColor();
             field.onSelect.RemoveAllListeners();
             field.onEndEdit.RemoveAllListeners();
+            // Arrow keys stay in the field instead of moving the selection to a nearby label.
+            var nav = field.navigation;
+            nav.mode = UnityEngine.UI.Navigation.Mode.None;
+            field.navigation = nav;
             var label = new Label { Field = field };
             field.onSelect.AddListener(_ => OnLabelSelect(label));
             field.onEndEdit.AddListener(s => OnLabelEndEdit(label, s));
@@ -806,6 +822,10 @@ namespace CompoundTranslations
             catch (Exception e)
             {
                 Plugin.Log.LogError($"Sequence translation edit failed: {e}");
+            }
+            finally
+            {
+                Release(label.Field);
             }
         }
 
