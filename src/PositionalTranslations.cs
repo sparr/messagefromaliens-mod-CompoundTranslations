@@ -234,17 +234,21 @@ namespace CompoundTranslations
         private static bool lastVisible = true;
         private static int lastWins = -1;
         private static object lastSave;
+        private static int lastEncountered = -1;
 
         internal static void Tick()
         {
             try
             {
                 var wins = Global.savedata?.win?.Count ?? 0;
-                if (Visible != lastVisible || wins != lastWins || !ReferenceEquals(Global.savedata, lastSave))
+                // Drawing a word for the first time can give its parts positions.
+                var encountered = Enabled ? EncounteredPositions.Version : lastEncountered;
+                if (Visible != lastVisible || wins != lastWins || !ReferenceEquals(Global.savedata, lastSave) || encountered != lastEncountered)
                 {
                     lastVisible = Visible;
                     lastWins = wins;
                     lastSave = Global.savedata;
+                    lastEncountered = encountered;
                     RefreshHistory();
                 }
                 var state = CurrentState(out var word, out var isPanel);
