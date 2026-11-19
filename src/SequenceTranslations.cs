@@ -88,6 +88,10 @@ namespace CompoundTranslations
 
         private static bool Shift => Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 
+        // A shift+click: Shift held while the mouse was pressed this frame. Tab with Shift held
+        // also moves the selection to the next label, which must not start a run.
+        private static bool ShiftClick => Shift && Input.GetMouseButtonDown(0);
+
         // A value of "?", which the game writes for an untranslated word, is no translation.
         internal static bool IsBlank(string value) => string.IsNullOrWhiteSpace(value) || value.Trim() == "?";
 
@@ -227,8 +231,7 @@ namespace CompoundTranslations
                 return true;
             }
             covering.TryGetValue(ac, out var cov);
-            var shift = Shift;
-            if (shift && lastFrame == Time.frameCount && lastSentence == at.Sentence)
+            if (ShiftClick && lastFrame == Time.frameCount && lastSentence == at.Sentence)
             {
                 var start = Math.Min(lastStart, cov?.Start ?? at.Index);
                 var end = Math.Max(lastEnd, cov?.End ?? at.Index);
@@ -711,7 +714,7 @@ namespace CompoundTranslations
             label.Field.textComponent.color = CompoundHint.NormalColor();
             // Shift+click on a run's label extends the selection that was just being edited.
             var occ = label.Occ;
-            if (Shift && lastFrame == Time.frameCount && lastSentence == occ.Sentence)
+            if (ShiftClick && lastFrame == Time.frameCount && lastSentence == occ.Sentence)
             {
                 var extended = MakeOccurrence(occ.Sentence, Math.Min(lastStart, occ.Start), Math.Max(lastEnd, occ.End));
                 if (extended != null && !extended.Same(occ))
