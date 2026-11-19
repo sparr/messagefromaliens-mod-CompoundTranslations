@@ -224,7 +224,7 @@ namespace CompoundTranslations
                 return null;
             }
             var dict = Global.savedata?.dict;
-            return dict != null && dict.TryGetValue(Key(slot, word), out var t) && !string.IsNullOrWhiteSpace(t) ? t.Trim() : null;
+            return dict != null && dict.TryGetValue(Key(slot, word), out var t) && !SequenceTranslations.IsBlank(t) ? t.Trim() : null;
         }
 
         private static string Key(string slot, string word) => KeyPrefix + slot + ":" + word;
@@ -449,7 +449,7 @@ namespace CompoundTranslations
                 if (dict != null)
                 {
                     var key = Key(f.Variant.Slot, f.Word);
-                    var t = (s ?? "").Trim();
+                    var t = SequenceTranslations.IsBlank(s) ? "" : s.Trim();
                     var had = dict.TryGetValue(key, out var old);
                     if (t == "" ? had : old != t)
                     {
