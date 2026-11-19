@@ -88,7 +88,8 @@ namespace CompoundTranslations
         // PushLeftText prefix: adds the button glyphs to a word's information text.
         internal static void Decorate(string title, ref string info)
         {
-            if (Enabled && IsWordInfo(title, info) && !info.Contains(ButtonMarker) && EncounteredPositions.HasAny(title))
+            // While translations are hidden, the panel's fields are not drawn, so no button.
+            if (Enabled && Visible && IsWordInfo(title, info) && !info.Contains(ButtonMarker) && EncounteredPositions.HasAny(title))
             {
                 var i = info.IndexOf(BlankLine, StringComparison.Ordinal);
                 if (i >= 0)
@@ -229,10 +230,23 @@ namespace CompoundTranslations
 
         private static string Key(string slot, string word) => KeyPrefix + slot + ":" + word;
 
+        // What the buttons in the left panel's history were last worked out for.
+        private static bool lastVisible = true;
+        private static int lastWins = -1;
+        private static object lastSave;
+
         internal static void Tick()
         {
             try
             {
+                var wins = Global.savedata?.win?.Count ?? 0;
+                if (Visible != lastVisible || wins != lastWins || !ReferenceEquals(Global.savedata, lastSave))
+                {
+                    lastVisible = Visible;
+                    lastWins = wins;
+                    lastSave = Global.savedata;
+                    RefreshHistory();
+                }
                 var state = CurrentState(out var word, out var isPanel);
                 if (dirty || state != shownState)
                 {
