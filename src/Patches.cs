@@ -71,6 +71,8 @@ namespace CompoundTranslations
             {
                 SequenceTranslations.AfterGlyphEndEdit(__instance);
                 CompoundHint.RefreshVisible(__instance);
+                // An open positions panel shows the word's translation as its fallback.
+                PositionalTranslations.MarkDirty();
             }
             catch (Exception e)
             {
