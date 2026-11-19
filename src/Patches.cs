@@ -117,6 +117,28 @@ namespace CompoundTranslations
         }
     }
 
+    // The game gives the cursor the color of nothing clickable for the position buttons; give it
+    // the clickable color instead.
+    [HarmonyPatch(typeof(HardwareCursor), nameof(HardwareCursor.Apply))]
+    internal static class CursorPatch
+    {
+        private static void Prefix(ref UnityEngine.Color c)
+        {
+            try
+            {
+                var d = Global.manager;
+                if (d != null && c == d.DefaultColor(5) && PositionalTranslations.OverButton())
+                {
+                    c = d.DefaultColor(0);
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"Cursor prefix failed: {e}");
+            }
+        }
+    }
+
     // A word's information text gets the glyphs that open its position translations.
     [HarmonyPatch(typeof(Draw), nameof(Draw.PushLeftText))]
     internal static class PushLeftTextPatch

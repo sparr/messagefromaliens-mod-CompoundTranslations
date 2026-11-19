@@ -104,5 +104,6 @@ For a game folder outside a Steam library, set `GameDir` to the game folder the 
 | `Draw.ClearSelected` | Prefix: ends the edit of a run's label as a redraw starts, so it is saved under that run. |
 | `Draw.PushLeftText` | Prefix: adds the glyphs that open the position translations panel to a word's information text. |
 | `Draw.UpdateText` | Postfix: marks the left panel as changed, so the position translations panel is drawn again on the next frame. |
+| `HardwareCursor.Apply` | Prefix: gives the cursor the clickable color over the position translations button. |
 
 Each applied hint is logged at the `Debug` level.

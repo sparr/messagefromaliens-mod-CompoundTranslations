@@ -629,6 +629,9 @@ namespace CompoundTranslations
             return hit.transform.GetComponentInParent<AlienCharacter>();
         }
 
+        // Whether the mouse is over one of the position buttons of the shown information panel.
+        internal static bool OverButton() => buttonWord != null && IsButtonGlyph(ClickedGlyph());
+
         // One of the button glyphs: a left panel glyph on the line that holds only them.
         private static bool IsButtonGlyph(AlienCharacter ac)
         {
