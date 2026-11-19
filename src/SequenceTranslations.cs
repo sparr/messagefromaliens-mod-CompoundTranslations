@@ -226,7 +226,8 @@ namespace CompoundTranslations
 
         private static bool StartsOwnEdit(AlienCharacter ac)
         {
-            if (!Enabled || dirty || ac == null || !cellOf.TryGetValue(ac, out var at))
+            // While translations are hidden, no run labels are drawn to edit.
+            if (!Enabled || !Visible || dirty || ac == null || !cellOf.TryGetValue(ac, out var at))
             {
                 return true;
             }
@@ -493,7 +494,8 @@ namespace CompoundTranslations
             var newCovering = new Dictionary<AlienCharacter, Occurrence>();
             pending = Rebind(pending);
             revealed = Rebind(revealed);
-            if (Enabled)
+            // While translations are hidden, glyphs inside runs edit and show as their own.
+            if (Enabled && Visible)
             {
                 var runs = LoadRuns();
                 foreach (var s in sentences)
