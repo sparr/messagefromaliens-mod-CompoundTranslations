@@ -341,7 +341,7 @@ namespace CompoundTranslations
             buttonWord = null;
             foreach (var f in fields)
             {
-                if (f.Input != null && !f.Input.isFocused)
+                if (f.Input != null && !SequenceTranslations.InUse(f.Input))
                 {
                     f.Input.gameObject.SetActive(false);
                     f.Variant = null;
@@ -407,7 +407,7 @@ namespace CompoundTranslations
                     fields.Add(f);
                 }
                 var field = fields[i];
-                if (field.Input.isFocused)
+                if (SequenceTranslations.InUse(field.Input))
                 {
                     continue;
                 }
@@ -418,13 +418,18 @@ namespace CompoundTranslations
             }
         }
 
-        // The field shows the positional translation, or in the finished color, the translation
-        // it falls back to.
+        // The field holds the positional translation, or is empty and shows, in the finished
+        // color, the translation it falls back to. The fallback is the field's placeholder, so no
+        // way of ending an edit can save it.
         private static void ShowValue(Field f)
         {
-            var own = Get(f.Word, f.Variant.Slot);
-            f.Input.textComponent.color = own != null ? CompoundHint.NormalColor() : CompoundHint.FinishedColor();
-            f.Input.text = own ?? (CompoundHint.IsTranslated(f.Word) ? Global.savedata.dict[f.Word].Trim() : CompoundHint.Unknown);
+            f.Input.textComponent.color = CompoundHint.NormalColor();
+            f.Input.text = Get(f.Word, f.Variant.Slot) ?? "";
+            if (f.Input.placeholder is TMP_Text placeholder)
+            {
+                placeholder.color = CompoundHint.FinishedColor();
+                placeholder.text = CompoundHint.IsTranslated(f.Word) ? Global.savedata.dict[f.Word].Trim() : CompoundHint.Unknown;
+            }
         }
 
         private static void OnSelect(Field f)
@@ -433,7 +438,6 @@ namespace CompoundTranslations
             {
                 return;
             }
-            f.Input.text = Get(f.Word, f.Variant.Slot) ?? "";
             f.Input.textComponent.color = CompoundHint.NormalColor();
         }
 
@@ -561,6 +565,10 @@ namespace CompoundTranslations
             var nav = input.navigation;
             nav.mode = UnityEngine.UI.Navigation.Mode.None;
             input.navigation = nav;
+            // The prefab has no placeholder; a copy of its text shows the fallback.
+            var placeholder = UnityEngine.Object.Instantiate(input.textComponent.gameObject, input.textComponent.transform.parent);
+            placeholder.name = "Placeholder";
+            input.placeholder = placeholder.GetComponent<TMP_Text>();
             go.SetActive(false);
             return input;
         }
