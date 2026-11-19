@@ -663,6 +663,8 @@ namespace CompoundTranslations
                         label.Occ = occ;
                         label.Field.text = Translation(occ.Key);
                     }
+                    // The game recolors only its own labels when the color scheme changes.
+                    label.Field.textComponent.color = CompoundHint.NormalColor();
                     label.Field.gameObject.SetActive(true);
                 }
             }
