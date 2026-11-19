@@ -235,7 +235,7 @@ namespace CompoundTranslations
             {
                 var start = Math.Min(lastStart, cov?.Start ?? at.Index);
                 var end = Math.Max(lastEnd, cov?.End ?? at.Index);
-                var occ = MakeOccurrence(at.Sentence, start, end);
+                var occ = Creatable(at.Sentence, start, end);
                 if (occ != null)
                 {
                     Defer(occ, ac, null);
@@ -288,6 +288,14 @@ namespace CompoundTranslations
                 tokens[i - start] = t;
             }
             return new Occurrence { Sentence = s, Start = start, End = end, Key = KeyPrefix + string.Join(" ", tokens) };
+        }
+
+        // A new run, unless Match would never show it there, as right after a conjunction whose
+        // neighbors share a word type: it would be saved and vanish at once.
+        private static Occurrence Creatable(Sentence s, int start, int end)
+        {
+            var occ = MakeOccurrence(s, start, end);
+            return occ != null && !SharesHead(s, occ.Start) ? occ : null;
         }
 
         // Selecting another object from inside an onSelect handler is refused by the
@@ -716,7 +724,7 @@ namespace CompoundTranslations
             var occ = label.Occ;
             if (ShiftClick && lastFrame == Time.frameCount && lastSentence == occ.Sentence)
             {
-                var extended = MakeOccurrence(occ.Sentence, Math.Min(lastStart, occ.Start), Math.Max(lastEnd, occ.End));
+                var extended = Creatable(occ.Sentence, Math.Min(lastStart, occ.Start), Math.Max(lastEnd, occ.End));
                 if (extended != null && !extended.Same(occ))
                 {
                     Defer(extended, null, label);
