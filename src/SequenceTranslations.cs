@@ -92,6 +92,11 @@ namespace CompoundTranslations
         // also moves the selection to the next label, which must not start a run.
         private static bool ShiftClick => Shift && Input.GetMouseButtonDown(0);
 
+        // A field the player is using or about to: focused, or selected with its activation
+        // still queued, as for the frame after a click.
+        internal static bool InUse(TMP_InputField field) =>
+            field != null && (field.isFocused || (EventSystem.current != null && EventSystem.current.currentSelectedGameObject == field.gameObject));
+
         // A value of "?", which the game writes for an untranslated word, is no translation.
         internal static bool IsBlank(string value) => string.IsNullOrWhiteSpace(value) || value.Trim() == "?";
 
@@ -116,6 +121,15 @@ namespace CompoundTranslations
                 if (Visible != lastVisible)
                 {
                     needsRender = true;
+                }
+                // A label activated again without being selected anew, as by a click after
+                // Enter, starts an edit without onSelect.
+                foreach (var l in labels)
+                {
+                    if (l.Occ != null && l.Field != null && l.Field.isFocused && editing != l)
+                    {
+                        OnLabelSelect(l);
+                    }
                 }
                 // Rescan before deciding what to reveal, so a redraw does not drop the reveal
                 // for a frame.
@@ -159,7 +173,8 @@ namespace CompoundTranslations
             {
                 return;
             }
-            if (hidden && ac.txt.isFocused)
+            // A label being edited, or selected and about to be, stays visible.
+            if (hidden && InUse(ac.txt))
             {
                 hidden = false;
             }
@@ -174,7 +189,7 @@ namespace CompoundTranslations
         private static void UpdateReveal()
         {
             Occurrence next = null;
-            if (Plugin.RevealOnHover.Value && Enabled && Visible && editing == null && pending == null)
+            if (Plugin.RevealOnHover.Value && Enabled && Visible && editing == null && pending == null && !labels.Exists(l => InUse(l.Field)))
             {
                 var ac = HoveredGlyph();
                 if (ac != null && cellOf.TryGetValue(ac, out var at))
@@ -611,23 +626,29 @@ namespace CompoundTranslations
             var manager = Global.manager;
             var show = manager != null && Visible;
 
-            Label keep = null;
-            if (editing?.Field != null)
+            // A label being edited, or selected with its activation queued, keeps its run, so
+            // what is typed is saved under the run the player chose. If its run no longer
+            // matches, it stays on screen until its edit ends.
+            var kept = new Dictionary<Occurrence, Label>();
+            var keptLabels = new HashSet<Label>();
+            foreach (var l in labels)
             {
-                foreach (var occ in occurrences)
+                if (l.Occ == null || l.Field == null || !(l == editing || InUse(l.Field)))
                 {
-                    if (occ.Same(editing.Occ))
-                    {
-                        editing.Occ = occ;
-                        keep = editing;
-                        break;
-                    }
+                    continue;
                 }
+                var occ = occurrences.Find(o => o.Same(l.Occ) && !kept.ContainsKey(o));
+                if (occ != null)
+                {
+                    l.Occ = occ;
+                    kept[occ] = l;
+                }
+                keptLabels.Add(l);
             }
             var free = new Queue<Label>();
             foreach (var l in labels)
             {
-                if (l != keep)
+                if (!keptLabels.Contains(l))
                 {
                     free.Enqueue(l);
                 }
@@ -636,12 +657,7 @@ namespace CompoundTranslations
             {
                 foreach (var occ in occurrences)
                 {
-                    Label label;
-                    if (keep != null && keep.Occ == occ)
-                    {
-                        label = keep;
-                    }
-                    else
+                    if (!kept.TryGetValue(occ, out var label))
                     {
                         label = free.Count > 0 ? free.Dequeue() : CreateLabel(manager);
                         label.Occ = occ;
@@ -659,11 +675,24 @@ namespace CompoundTranslations
                     l.Field.gameObject.SetActive(false);
                 }
             }
-            // The label being edited no longer matches what is on screen: end the edit,
-            // which saves it under its run.
-            if (editing != null && keep == null && editing.Field != null && EventSystem.current?.currentSelectedGameObject == editing.Field.gameObject)
+        }
+
+        // Draw.ClearSelected prefix, as a redraw starts: end a run label's edit while its run is
+        // still known, so it is saved under that run, as the game's own labels are saved when the
+        // redraw deactivates them.
+        internal static void BeforeRedraw()
+        {
+            var es = EventSystem.current;
+            if (es == null)
             {
-                EventSystem.current.SetSelectedGameObject(null);
+                return;
+            }
+            foreach (var l in labels)
+            {
+                if (l.Occ != null && l.Field != null && l.Field.isFocused && es.currentSelectedGameObject == l.Field.gameObject)
+                {
+                    es.SetSelectedGameObject(null);
+                }
             }
         }
 

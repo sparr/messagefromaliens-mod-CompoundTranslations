@@ -97,6 +97,24 @@ namespace CompoundTranslations
         private static void Postfix() => SequenceTranslations.MarkDirty();
     }
 
+    // A redraw starts by clearing the screen's lines: end a run label's edit first, while its
+    // run is still known.
+    [HarmonyPatch(typeof(Draw), nameof(Draw.ClearSelected))]
+    internal static class ClearSelectedPatch
+    {
+        private static void Prefix()
+        {
+            try
+            {
+                SequenceTranslations.BeforeRedraw();
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"ClearSelected prefix failed: {e}");
+            }
+        }
+    }
+
     // A word's information text gets the glyphs that open its position translations.
     [HarmonyPatch(typeof(Draw), nameof(Draw.PushLeftText))]
     internal static class PushLeftTextPatch
