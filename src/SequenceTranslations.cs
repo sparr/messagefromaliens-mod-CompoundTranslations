@@ -288,7 +288,7 @@ namespace CompoundTranslations
             {
                 Remember(at.Sentence, at.Index, at.Index);
             }
-            // The new translation may be "and" or "or", which changes where runs match.
+            // The new translation may be "and", "or", or "to", which changes where runs match.
             needsRender = true;
         }
 
@@ -620,7 +620,9 @@ namespace CompoundTranslations
 
         // In "up and down face", "face" belongs to "up" too, so a run "down face" there would
         // be wrong. A run is not matched right after a glyph translated as "and" or "or" when
-        // the glyph before that shares a word type with the run's first glyph.
+        // the glyph before that shares a word type with the run's first glyph. "to" joins the
+        // same way only between two numbers, as in "1 to 2 year": between nouns it names a
+        // place or a recipient, and the noun after it is its own.
         private static bool SharesHead(Sentence s, int i)
         {
             if (i < 2)
@@ -630,12 +632,12 @@ namespace CompoundTranslations
             var conj = s.Cells[i - 1].Token;
             var before = s.Cells[i - 2].Token;
             var first = s.Cells[i].Token;
-            if (conj == null || conj == Gap || before == null || before == Gap || !CompoundHint.IsTranslated(conj))
+            if (conj == null || conj == Gap || before == null || before == Gap)
             {
                 return false;
             }
-            var t = Global.savedata.dict[conj].Trim();
-            if (!t.Equals("and", StringComparison.OrdinalIgnoreCase) && !t.Equals("or", StringComparison.OrdinalIgnoreCase))
+            var joins = Joins(conj);
+            if (joins == null)
             {
                 return false;
             }
@@ -646,12 +648,35 @@ namespace CompoundTranslations
             }
             foreach (var type in a.wordtype)
             {
-                if (b.wordtype.Contains(type))
+                if (b.wordtype.Contains(type) && (joins != "to" || type == "num"))
                 {
                     return true;
                 }
             }
             return false;
+        }
+
+        // "and", "or", or "to" if the glyph's translation is that word or lists it among
+        // alternatives separated by punctuation of any kind, as in "end / to" or "end, to".
+        // Spaces, hyphens, and apostrophes stay inside an alternative, so "near to" is not "to".
+        // Otherwise null.
+        private static readonly System.Text.RegularExpressions.Regex Alternatives = new System.Text.RegularExpressions.Regex(@"[^\p{L}\p{N}\s'-]+");
+
+        internal static string Joins(string glyph)
+        {
+            if (!CompoundHint.IsTranslated(glyph))
+            {
+                return null;
+            }
+            foreach (var part in Alternatives.Split(Global.savedata.dict[glyph]))
+            {
+                var t = part.Trim().ToLowerInvariant();
+                if (t == "and" || t == "or" || t == "to")
+                {
+                    return t;
+                }
+            }
+            return null;
         }
 
         private static void Add(Occurrence occ, bool[] taken, Dictionary<AlienCharacter, Occurrence> cover)
