@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using HarmonyLib;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -13,7 +14,8 @@ namespace CompoundTranslations
     // centered below it. Clearing a run's translation removes it.
     //
     // A sentence is the glyphs one Draw.Write call placed on one source line, which may wrap
-    // across rows. A run is identified by its glyph IDs in order, with "." for each space between them, counted
+    // across rows. Lines that list separate glyphs are not sentences (IsList). A run is
+    // identified by its glyph IDs in order, with "." for each space between them, counted
     // across wraps as Write laid them out (AddGaps). Translations are stored in
     // Global.savedata.dict under KeyPrefix + the run, so they are saved with the game's save slot.
     // The game only reads that dictionary by word, never enumerates it.
@@ -56,6 +58,8 @@ namespace CompoundTranslations
             public int Line;
             public int LineX;
             public int LineY;
+            // On a line that lists separate glyphs, not a sentence (IsList).
+            public bool List;
 
             public bool Current(AlienCharacter ac) => ac.alien_txt == Word && ac.sector == Call.Sector && ac.line == Line && ac.line_x == LineX && ac.line_y == LineY;
         }
@@ -507,9 +511,59 @@ namespace CompoundTranslations
             {
                 if (ac != null)
                 {
-                    placements[ac] = new Placement { Call = call, Word = ac.alien_txt, Line = ac.line, LineX = ac.line_x, LineY = ac.line_y };
+                    placements[ac] = new Placement { Call = call, Word = ac.alien_txt, Line = ac.line, LineX = ac.line_x, LineY = ac.line_y, List = IsList(draw, sec, ac.line) };
                 }
             }
+        }
+
+        private static readonly Func<Draw, bool> IsEditNote = AccessTools.MethodDelegate<Func<Draw, bool>>(AccessTools.Method(typeof(Draw), "IsEditNote"));
+
+        private static readonly AccessTools.FieldRef<Draw, int> UnderstandLevel = AccessTools.FieldRefAccess<Draw, int>("understand_lv");
+
+        // Lines that list glyphs side by side as separate items, not words of a sentence: each
+        // panel's row of buttons, on every page; on the dictionary page and in the note
+        // editor, the row of category glyphs and the grid of a category's words; on a quiz page,
+        // the row of glyphs it offers; in the minigames, the rows of moves, choices, cards, and
+        // board cells. Write draws each as one line, sometimes among lines of sentences in the
+        // same call. These are the glyphs the game makes clickable one by one on those pages.
+        private static bool IsList(Draw draw, string sec, int line)
+        {
+            if (sec == "leftmenu" || sec == "rightmenu")
+            {
+                return true;
+            }
+            var page = draw?.current_page;
+            if (page == null)
+            {
+                return false;
+            }
+            if (page == "language de book" || IsEditNote(draw))
+            {
+                return sec == "righttextup" || sec == "righttextdown";
+            }
+            switch (page)
+            {
+                // The moves, each followed by its cost.
+                case "hero de arena game":
+                // The actions, then the choices or the items.
+                case "explorer by word":
+                // The draw and stop buttons.
+                case "no pair game":
+                    return sec == "righttextdown";
+                // A test's row of digits and buttons, or of answers.
+                case "understand rule":
+                    return sec == "righttextup" && UnderstandLevel(draw) != 0;
+                // The board.
+                case "2e1 detrap de variant":
+                    return sec == "righttextdown" && !string.IsNullOrEmpty(MV.current_variant);
+                // The rows of numbers and cards, above a line of text.
+                case "1e1 de sequence":
+                    return sec == "righttextup" && line <= 1;
+                // The rows of cards, around two lines of text.
+                case "1e1 planet card":
+                    return sec == "righttextdown" && line != 2 && line != 5;
+            }
+            return sec == "righttextup" && Global.quiz_supply != null && Global.quiz_supply.ContainsKey(page);
         }
 
         private static void Scan()
@@ -528,7 +582,7 @@ namespace CompoundTranslations
                 for (var x = 0; x < slots.GetLength(0); x++)
                 {
                     var ac = slots[x, y];
-                    if (ac == null || !ac.gameObject.activeInHierarchy || !placements.TryGetValue(ac, out var p) || !p.Current(ac))
+                    if (ac == null || !ac.gameObject.activeInHierarchy || !placements.TryGetValue(ac, out var p) || !p.Current(ac) || p.List)
                     {
                         continue;
                     }
