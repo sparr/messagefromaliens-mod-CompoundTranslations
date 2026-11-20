@@ -99,6 +99,25 @@ namespace CompoundTranslations
         private static void Postfix() => SequenceTranslations.MarkDirty();
     }
 
+    // Records which call drew each glyph, and that call's row layout, so sentences are kept
+    // apart by call and the empty cells at a wrap can be counted. The string overload calls
+    // this one.
+    [HarmonyPatch(typeof(Draw), nameof(Draw.Write), new[] { typeof(List<string>), typeof(int), typeof(int), typeof(int), typeof(bool), typeof(bool), typeof(bool), typeof(float), typeof(string), typeof(float), typeof(bool), typeof(int), typeof(int) })]
+    internal static class WriteCapturePatch
+    {
+        private static void Postfix(Draw __instance, List<string> s, int maxx, int xx, int yy, bool isLeft, string sec, bool nospacing, List<AlienCharacter> __result)
+        {
+            try
+            {
+                SequenceTranslations.AfterWrite(__instance, s, maxx, xx, yy, isLeft, sec, nospacing, __result);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"Write postfix failed: {e}");
+            }
+        }
+    }
+
     // A redraw starts by clearing the screen's lines: end a run label's edit first, while its
     // run is still known.
     [HarmonyPatch(typeof(Draw), nameof(Draw.ClearSelected))]

@@ -12,9 +12,9 @@ namespace CompoundTranslations
     // same run is bracketed, its glyphs' own labels are hidden, and the run's translation is shown
     // centered below it. Clearing a run's translation removes it.
     //
-    // A sentence is the glyphs one Draw.Write call placed on one source line (same sector and
-    // AlienCharacter.line), which may wrap across rows. A run is identified by its glyph IDs in
-    // order, with "." for each empty cell between glyphs on a row. Translations are stored in
+    // A sentence is the glyphs one Draw.Write call placed on one source line, which may wrap
+    // across rows. A run is identified by its glyph IDs in order, with "." for each space between them, counted
+    // across wraps as Write laid them out (AddGaps). Translations are stored in
     // Global.savedata.dict under KeyPrefix + the run, so they are saved with the game's save slot.
     // The game only reads that dictionary by word, never enumerates it.
     internal static class SequenceTranslations
@@ -30,12 +30,42 @@ namespace CompoundTranslations
             public string Token;
             public int X;
             public int Y;
+            // The glyph's position as Write numbered it, for a glyph cell.
+            public int LineX;
+            public int LineY;
+        }
+
+        // One Draw.Write call's layout. Its rows run from column Left to Left + Width - 1,
+        // relative to its origin X; a continued row starts Indent cells in.
+        private sealed class WriteCall
+        {
+            public string Sector;
+            public int X;
+            public int Y;
+            public int Left;
+            public int Width;
+            public int Indent;
+        }
+
+        // Where a Write call put a glyph. The game reuses glyph objects, so the record holds
+        // only while the glyph still shows what that call drew.
+        private sealed class Placement
+        {
+            public WriteCall Call;
+            public string Word;
+            public int Line;
+            public int LineX;
+            public int LineY;
+
+            public bool Current(AlienCharacter ac) => ac.alien_txt == Word && ac.sector == Call.Sector && ac.line == Line && ac.line_x == LineX && ac.line_y == LineY;
         }
 
         private sealed class Sentence
         {
-            public string Sector;
-            public int Line;
+            // Stays the same when the page is redrawn: the section, the call's origin, and the
+            // line number within the call.
+            public (string Sector, int X, int Y, int Line) Id;
+            public WriteCall Call;
             public readonly List<Cell> Cells = new List<Cell>();
         }
 
@@ -46,9 +76,11 @@ namespace CompoundTranslations
             public int End;
             public string Key;
 
-            public bool Same(Occurrence o) => o != null && o.Sentence.Sector == Sentence.Sector
-                && o.Sentence.Line == Sentence.Line && o.Start == Start && o.End == End && o.Key == Key;
+            public bool Same(Occurrence o) => o != null && o.Sentence.Id == Sentence.Id
+                && o.Start == Start && o.End == End && o.Key == Key;
         }
+
+        private static readonly Dictionary<AlienCharacter, Placement> placements = new Dictionary<AlienCharacter, Placement>();
 
         private sealed class Label
         {
@@ -439,6 +471,47 @@ namespace CompoundTranslations
             lastVisible = Visible;
         }
 
+        // Draw.Write postfix: record the call's layout and which glyphs it drew.
+        internal static void AfterWrite(Draw draw, List<string> s, int maxx, int xx, int yy, bool isLeft, string sec, bool nospacing, List<AlienCharacter> drawn)
+        {
+            if (drawn == null || s == null)
+            {
+                return;
+            }
+            // Write starts every row of a right-aligned call at minus the most glyphs on any
+            // line, counting every token but newlines and those starting with @.
+            var widest = 0;
+            var count = 0;
+            foreach (var token in s)
+            {
+                if (token == "newline")
+                {
+                    count = 0;
+                }
+                else if (!token.StartsWith("@", StringComparison.Ordinal))
+                {
+                    count++;
+                }
+                widest = Math.Max(widest, count);
+            }
+            var call = new WriteCall
+            {
+                Sector = sec,
+                X = xx,
+                Y = yy,
+                Left = isLeft ? 0 : -widest,
+                Width = maxx,
+                Indent = nospacing ? 0 : 1,
+            };
+            foreach (var ac in drawn)
+            {
+                if (ac != null)
+                {
+                    placements[ac] = new Placement { Call = call, Word = ac.alien_txt, Line = ac.line, LineX = ac.line_x, LineY = ac.line_y };
+                }
+            }
+        }
+
         private static void Scan()
         {
             sentences.Clear();
@@ -448,36 +521,69 @@ namespace CompoundTranslations
             {
                 return;
             }
-            var bySentence = new Dictionary<(string, int), Sentence>();
+            var bySentence = new Dictionary<(WriteCall, int), Sentence>();
             // Rows are filled top to bottom, which is decreasing y, and left to right.
             for (var y = slots.GetLength(1) - 1; y >= 0; y--)
             {
                 for (var x = 0; x < slots.GetLength(0); x++)
                 {
                     var ac = slots[x, y];
-                    if (ac == null || ac.sector == null || !ac.gameObject.activeInHierarchy)
+                    if (ac == null || !ac.gameObject.activeInHierarchy || !placements.TryGetValue(ac, out var p) || !p.Current(ac))
                     {
                         continue;
                     }
-                    var k = (ac.sector, ac.line);
+                    var k = (p.Call, p.Line);
                     if (!bySentence.TryGetValue(k, out var s))
                     {
-                        s = new Sentence { Sector = ac.sector, Line = ac.line };
+                        s = new Sentence { Id = (p.Call.Sector, p.Call.X, p.Call.Y, p.Line), Call = p.Call };
                         bySentence[k] = s;
                         sentences.Add(s);
                     }
                     var last = s.Cells.Count > 0 ? s.Cells[s.Cells.Count - 1] : null;
-                    if (last != null && last.Y == y)
+                    if (last != null)
                     {
-                        for (var gx = last.X + 1; gx < x; gx++)
-                        {
-                            s.Cells.Add(new Cell { Token = Gap, X = gx, Y = y });
-                        }
+                        AddGaps(s, last, p, x, y);
                     }
                     var eligible = ac.sp != null && ac.sp.enabled && ac.showtxt && ac.txt != null && !string.IsNullOrEmpty(ac.alien_txt);
                     cellOf[ac] = (s, s.Cells.Count);
-                    s.Cells.Add(new Cell { Ac = ac, Token = eligible ? ac.alien_txt : null, X = x, Y = y });
+                    s.Cells.Add(new Cell { Ac = ac, Token = eligible ? ac.alien_txt : null, X = x, Y = y, LineX = p.LineX, LineY = p.LineY });
                 }
+            }
+        }
+
+        // Adds the empty cells between the sentence's last glyph and the next one at (x, y).
+        // Write leaves a cell empty only for a space token, and wraps only when a row is full,
+        // so every empty cell from the last glyph to the end of its row, on any row between,
+        // and from the start of the next glyph's row (after the indent) is a space in the text.
+        // A space at the end of a row shows no gap, and the indent is not a space.
+        private static void AddGaps(Sentence s, Cell last, Placement next, int x, int y)
+        {
+            var call = s.Call;
+            var first = call.Left + call.Indent;
+            var end = call.Left + call.Width - 1;
+            var origin = last.X - last.LineX;
+            if (last.LineY == next.LineY)
+            {
+                for (var gx = last.X + 1; gx < x; gx++)
+                {
+                    s.Cells.Add(new Cell { Token = Gap, X = gx, Y = y });
+                }
+                return;
+            }
+            for (var lx = last.LineX + 1; lx <= end; lx++)
+            {
+                s.Cells.Add(new Cell { Token = Gap, X = origin + lx, Y = last.Y });
+            }
+            for (var gy = last.Y - 1; gy > y; gy--)
+            {
+                for (var lx = first; lx <= end; lx++)
+                {
+                    s.Cells.Add(new Cell { Token = Gap, X = origin + lx, Y = gy });
+                }
+            }
+            for (var lx = first; lx < next.LineX; lx++)
+            {
+                s.Cells.Add(new Cell { Token = Gap, X = origin + lx, Y = y });
             }
         }
 
@@ -490,7 +596,7 @@ namespace CompoundTranslations
             }
             foreach (var s in sentences)
             {
-                if (s.Sector == o.Sentence.Sector && s.Line == o.Sentence.Line)
+                if (s.Id == o.Sentence.Id)
                 {
                     var n = MakeOccurrence(s, o.Start, o.End);
                     return n != null && n.Key == o.Key ? n : null;
