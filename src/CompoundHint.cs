@@ -50,18 +50,43 @@ namespace CompoundTranslations
             {
                 return null;
             }
+            var ctx = NewContext();
+            var depth = Plugin.Depth.Value;
+            var hint = depth == 0 ? null : Build(word, depth, ctx, !Plugin.OmitOuterBrackets.Value);
+            return hint ?? (ctx.MarkHidden && HasTranslatedPart(word, ctx) ? UnknownWithHidden : null);
+        }
+
+        // What a hint shows for the word as a part of a compound's hint, when the word has no
+        // translation for its position there: its translation, its bracketed nested hint, or
+        // "?" or "?+", as for a direct part of a word's own hint.
+        internal static string PartFallback(string word)
+        {
+            if (IsTranslated(word))
+            {
+                return Global.savedata.dict[word].Trim();
+            }
+            var ctx = NewContext();
+            var depth = Plugin.Depth.Value;
+            // A hint expands its direct parts unless Depth stops at them, or turns hints off.
+            var text = depth == 0 || depth == 1 ? null : Build(word, depth < 0 ? depth : depth - 1, ctx);
+            return text ?? Missing(word, ctx);
+        }
+
+        private static Context NewContext()
+        {
             GetBrackets(out var open, out var close);
-            var ctx = new Context
+            return new Context
             {
                 Separator = Plugin.Separator.Value?.Value ?? "",
                 Open = open,
                 Close = close,
                 MarkHidden = Plugin.MarkHidden.Value,
             };
-            var depth = Plugin.Depth.Value;
-            var hint = depth == 0 ? null : Build(word, depth, ctx, !Plugin.OmitOuterBrackets.Value);
-            return hint ?? (ctx.MarkHidden && HasTranslatedPart(word, ctx) ? UnknownWithHidden : null);
         }
+
+        // A part's text when neither it nor anything within the levels shown is translated.
+        private static string Missing(string part, Context ctx) =>
+            ctx.MarkHidden && HasTranslatedPart(part, ctx) ? UnknownWithHidden : Unknown;
 
         // levels: remaining bracket levels including this one; negative means unlimited.
         // bracket: whether to wrap this level in brackets; nested levels always are.
@@ -90,7 +115,7 @@ namespace CompoundTranslations
                     text = Build(part, levels < 0 ? levels : levels - 1, ctx);
                 }
                 found |= text != null;
-                parts[i] = text ?? (ctx.MarkHidden && HasTranslatedPart(part, ctx) ? UnknownWithHidden : Unknown);
+                parts[i] = text ?? Missing(part, ctx);
             }
             ctx.Path.Remove(word);
             if (!found)

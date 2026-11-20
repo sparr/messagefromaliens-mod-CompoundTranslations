@@ -444,8 +444,8 @@ namespace CompoundTranslations
         }
 
         // The field holds the positional translation, or is empty and shows, in the finished
-        // color, the translation it falls back to. The fallback is the field's placeholder, so no
-        // way of ending an edit can save it.
+        // color, what hints show for the word without it. The fallback is the field's
+        // placeholder, so no way of ending an edit can save it.
         private static void ShowValue(Field f)
         {
             f.Input.textComponent.color = CompoundHint.NormalColor();
@@ -453,7 +453,7 @@ namespace CompoundTranslations
             if (f.Input.placeholder is TMP_Text placeholder)
             {
                 placeholder.color = CompoundHint.FinishedColor();
-                placeholder.text = CompoundHint.IsTranslated(f.Word) ? Global.savedata.dict[f.Word].Trim() : CompoundHint.Unknown;
+                placeholder.text = CompoundHint.PartFallback(f.Word);
             }
         }
 
