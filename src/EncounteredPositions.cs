@@ -95,33 +95,31 @@ namespace CompoundTranslations
             var direct = encountered.Count;
             while (queue.Count > 0)
             {
-                var info = words[queue.Dequeue()];
+                var word = queue.Dequeue();
+                var info = words[word];
                 if (info.component == null)
                 {
                     continue;
                 }
-                var parts = new List<string>();
                 foreach (var c in info.component)
                 {
                     var part = CompoundHint.Canonical(c);
-                    if (!string.IsNullOrEmpty(part) && words.ContainsKey(part))
+                    if (!string.IsNullOrEmpty(part) && words.ContainsKey(part) && encountered.Add(part))
                     {
-                        parts.Add(part);
-                        if (encountered.Add(part))
-                        {
-                            queue.Enqueue(part);
-                        }
+                        queue.Enqueue(part);
                     }
                 }
-                // Positions count only where hints use them: two different parts.
-                if (info.component.Count < 2 || parts.Count < 2 || parts[0] == parts[1]
-                    || CompoundHint.Canonical(info.component[0]) != parts[0])
+                // Positions count only where hints use them: compounds of two parts, which
+                // CompoundHint.GetStructure keeps apart unless it reads them as one part repeated.
+                var structure = CompoundHint.GetStructure(word);
+                if (structure == null || structure.Repeat > 0)
                 {
                     continue;
                 }
+                var parts = structure.Parts;
                 for (var i = 0; i < 2; i++)
                 {
-                    var slot = PositionalTranslations.SlotFor(info.characterstruct, i);
+                    var slot = PositionalTranslations.SlotFor(structure.Relation, i);
                     if (slot == null)
                     {
                         continue;
