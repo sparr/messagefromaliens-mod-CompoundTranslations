@@ -173,6 +173,24 @@ namespace CompoundTranslations
         }
     }
 
+    // The game's Tab handler moves only between its own labels; Tab into a position field is
+    // handled first.
+    [HarmonyPatch(typeof(Draw), "Update")]
+    internal static class DrawUpdatePatch
+    {
+        private static void Prefix()
+        {
+            try
+            {
+                TabOrder.BeforeGameTab();
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"Draw.Update prefix failed: {e}");
+            }
+        }
+    }
+
     // A redraw may change the left panel, so the position button and panel are rebuilt.
     [HarmonyPatch(typeof(Draw), nameof(Draw.UpdateText))]
     internal static class UpdateTextPatch

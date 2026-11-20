@@ -41,7 +41,7 @@ Here you can see one translated phrase that applies to a sequence of four glyphs
 
 A glyph can have a different translation for each place it takes in a compound of two different words. A glyph's information panel, shown by right-clicking it, gets a new line above the definitions when the glyph takes a place in a compound you have encountered, underlined like a menu link, which will open the positional translation interface and indicate if it's already filled out.
 
-The new interface allows specifying a translation for a glyph that will be used in a compound word partial translation if the sub glyph appears in a particular position. The panel shows only the positions the glyph takes in compounds you have encountered: compounds the game has drawn for you anywhere, and the compounds inside them. An empty field shows, dimmed, what hints use in its place: the glyph's translation, or, for an untranslated compound, its own hint in brackets.
+The new interface allows specifying a translation for a glyph that will be used in a compound word partial translation if the sub glyph appears in a particular position. The panel shows only the positions the glyph takes in compounds you have encountered: compounds the game has drawn for you anywhere, and the compounds inside them. An empty field shows, dimmed, what hints use in its place: the glyph's translation, or, for an untranslated compound, its own hint in brackets. Tab moves through the fields along with the glyph labels.
 
 Position translations are saved in your save slot alongside the game's own translations, as entries whose names start with `compoundtranslations.position:`. The game ignores them. They stay in the save if the mod is removed.
 
@@ -102,6 +102,7 @@ For a game folder outside a Steam library, set `GameDir` to the game folder the 
 | `AlienCharacter.EndEdit` | Prefix: skips the game's end of edit, its save included, for a glyph whose edit was replaced by a run's. Postfix: records the glyph for extending the selection with shift+click, finds runs again, refreshes the labels of visible untranslated compounds, and redraws an open positions panel. |
 | `Draw.Write`, `Draw.ClearSelected` | Postfix: marks the glyph layout as changed, so runs are found again after the redraw, in the same frame. |
 | `Draw.ClearSelected` | Prefix: ends the edit of a run's label as a redraw starts, so it is saved under that run. |
+| `Draw.Update` | Prefix: Tab from a glyph label selects the next position field when one comes before the next label. |
 | `Draw.UpdateText1` | Prefix: rewrites the position translations button in the left panel's history, so every entry shows whether its glyph has position translations. |
 | `Draw.PushLeftText` | Prefix: adds the glyphs that open the position translations panel to a word's information text. |
 | `Draw.UpdateText` | Postfix: marks the left panel as changed, so the position translations panel is drawn again after the redraw, in the same frame. |

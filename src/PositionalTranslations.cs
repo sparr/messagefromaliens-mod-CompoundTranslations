@@ -266,6 +266,7 @@ namespace CompoundTranslations
                     Rebuild(word, isPanel);
                 }
                 PositionFields();
+                TabFromField();
                 if (buttonWord != null && Input.GetMouseButtonDown(0) && IsButtonGlyph(ClickedGlyph()))
                 {
                     Global.manager.PushLeftText(PanelTitle(buttonWord), Marker);
@@ -628,6 +629,36 @@ namespace CompoundTranslations
             ((RectTransform)input.transform).sizeDelta = size;
             input.textComponent.fontSizeMax = 0.3f * cellWidth;
             input.textComponent.textWrappingMode = TextWrappingModes.Normal;
+        }
+
+        // A field's place in the game's Tab order: the cell of the glyph it translates, in
+        // Draw.alien_slots, whose rows count up from the bottom.
+        private static Vector2Int Cell(Field f) => new Vector2Int(f.Variant.X, Global.manager.alien_slots.GetLength(1) - 1 - f.Variant.Y);
+
+        // The shown position fields, for TabOrder.
+        internal static IEnumerable<(Vector2Int Cell, GameObject Field)> TabFields()
+        {
+            foreach (var f in fields)
+            {
+                if (f.Variant != null && f.Input != null && f.Input.gameObject.activeInHierarchy)
+                {
+                    yield return (Cell(f), f.Input.gameObject);
+                }
+            }
+        }
+
+        // Tab from a position field moves on to the next label or field.
+        private static void TabFromField()
+        {
+            if (!TabOrder.Pressed(out var selected))
+            {
+                return;
+            }
+            var f = fields.Find(x => x.Variant != null && x.Input != null && x.Input.gameObject == selected);
+            if (f != null)
+            {
+                TabOrder.Select(TabOrder.Next(Cell(f), true));
+            }
         }
 
         private static AlienCharacter ClickedGlyph()

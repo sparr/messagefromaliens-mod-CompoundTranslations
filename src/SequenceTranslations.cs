@@ -328,37 +328,20 @@ namespace CompoundTranslations
         }
 
         // Tab from a run's label, which the game's Tab handler does not know, moves on to the
-        // next label after the run, in the game's order: rows from the top, cells from the left.
+        // next label or position field after the run (TabOrder).
         private static void TabFromLabel()
         {
-            var es = EventSystem.current;
-            var m = Global.manager;
-            if (!Input.GetKeyDown(KeyCode.Tab) || es == null || m?.txt_slots == null)
+            if (!TabOrder.Pressed(out var selected))
             {
                 return;
             }
-            var label = labels.Find(l => l.Occ != null && l.Field != null && es.currentSelectedGameObject == l.Field.gameObject);
+            var label = labels.Find(l => l.Occ != null && l.Field != null && selected == l.Field.gameObject);
             if (label == null)
             {
                 return;
             }
             var last = label.Occ.Sentence.Cells[label.Occ.End];
-            var after = false;
-            for (var y = m.txt_slots.GetLength(1) - 1; y >= 0; y--)
-            {
-                for (var x = 0; x < m.txt_slots.GetLength(0); x++)
-                {
-                    if (x == last.X && y == last.Y)
-                    {
-                        after = true;
-                    }
-                    else if (after && m.txt_slots[x, y].gameObject.activeSelf)
-                    {
-                        es.SetSelectedGameObject(m.txt_slots[x, y].gameObject);
-                        return;
-                    }
-                }
-            }
+            TabOrder.Select(TabOrder.Next(new Vector2Int(last.X, last.Y), false));
         }
 
         // Selecting another object from inside an onSelect handler is refused by the
