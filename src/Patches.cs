@@ -156,6 +156,23 @@ namespace CompoundTranslations
         }
     }
 
+    // The left panel is drawn from its history: bring the entries' position buttons up to date.
+    [HarmonyPatch(typeof(Draw), nameof(Draw.UpdateText1))]
+    internal static class UpdateText1Patch
+    {
+        private static void Prefix()
+        {
+            try
+            {
+                PositionalTranslations.BeforeRedraw();
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"UpdateText1 prefix failed: {e}");
+            }
+        }
+    }
+
     // A redraw may change the left panel, so the position button and panel are rebuilt.
     [HarmonyPatch(typeof(Draw), nameof(Draw.UpdateText))]
     internal static class UpdateTextPatch

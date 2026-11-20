@@ -102,6 +102,7 @@ For a game folder outside a Steam library, set `GameDir` to the game folder the 
 | `AlienCharacter.EndEdit` | Prefix: skips the game's end of edit, its save included, for a glyph whose edit was replaced by a run's. Postfix: records the glyph for extending the selection with shift+click, finds runs again, refreshes the labels of visible untranslated compounds, and redraws an open positions panel. |
 | `Draw.Write`, `Draw.ClearSelected` | Postfix: marks the glyph layout as changed, so runs are found again after the redraw, in the same frame. |
 | `Draw.ClearSelected` | Prefix: ends the edit of a run's label as a redraw starts, so it is saved under that run. |
+| `Draw.UpdateText1` | Prefix: rewrites the position translations button in the left panel's history, so every entry shows whether its glyph has position translations. |
 | `Draw.PushLeftText` | Prefix: adds the glyphs that open the position translations panel to a word's information text. |
 | `Draw.UpdateText` | Postfix: marks the left panel as changed, so the position translations panel is drawn again after the redraw, in the same frame. |
 | `HardwareCursor.Apply` | Prefix: gives the cursor the clickable color over the position translations button. |

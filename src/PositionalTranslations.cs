@@ -163,8 +163,11 @@ namespace CompoundTranslations
         }
 
         // Rewrites the button line of the information panels already in the left panel's
-        // history, so a changed setting or translation shows in them too.
-        private static void RefreshHistory()
+        // history, so a changed setting or translation shows in them too. Redraws when the
+        // shown entry changed; other entries are rewritten again before every redraw
+        // (BeforeRedraw), so a copy of the history taken at a redraw, as Interface Tweaks' undo
+        // takes, is brought up to date when it is drawn.
+        private static void RefreshHistory(bool redraw = true)
         {
             var m = Global.manager;
             if (m?.text_history == null)
@@ -186,11 +189,15 @@ namespace CompoundTranslations
                     changed |= i == m.currenttext;
                 }
             }
-            if (changed)
+            if (changed && redraw)
             {
                 m.UpdateText();
             }
         }
+
+        // UpdateText1 prefix: the left panel is drawn from the history, so its entries show the
+        // current button line.
+        internal static void BeforeRedraw() => RefreshHistory(redraw: false);
 
         // The slot a part fills in a compound of the given relation, or null when the relation
         // has no positional translations. part is 0 for the first component, 1 for the second.
