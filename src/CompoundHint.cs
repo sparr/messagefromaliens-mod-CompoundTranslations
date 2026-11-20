@@ -239,7 +239,9 @@ namespace CompoundTranslations
 
         internal static void Apply(AlienCharacter ac)
         {
-            if (ac == null || ac.txt == null || !ac.showtxt || ac.txt.isFocused)
+            // A label being edited, or selected and about to be, keeps the text the game gave it,
+            // so the hint is never what the player starts editing.
+            if (ac == null || ac.txt == null || !ac.showtxt || SequenceTranslations.InUse(ac.txt))
             {
                 return;
             }

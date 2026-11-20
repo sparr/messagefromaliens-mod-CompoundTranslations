@@ -97,7 +97,7 @@ For a game folder outside a Steam library, set `GameDir` to the game folder the 
 
 | Method | Patch |
 |---|---|
-| `AlienCharacter.UpdateEarthText` | Postfix: for a word with no translation (saved value blank or exactly `?`), replaces the label's leading `?` with the hint, keeping any unit or number suffix the game appends, and sets the label color. Otherwise restores the normal label color. Hides the label of a glyph inside a run, keeping its text. |
+| `AlienCharacter.UpdateEarthText` | Postfix: for a word with no translation (saved value blank or exactly `?`), unless the label is being edited or is selected, replaces the label's leading `?` with the hint, keeping any unit or number suffix the game appends, and sets the label color. Otherwise restores the normal label color. Hides the label of a glyph inside a run, keeping its text. |
 | `AlienCharacter.StartEdit` | Prefix: on shift+click, or on a glyph inside a run, skips the game's edit and opens the run's label instead. Postfix: restores the normal label color while editing. |
 | `AlienCharacter.EndEdit` | Prefix: skips the game's end of edit, its save included, for a glyph whose edit was replaced by a run's. Postfix: records the glyph for extending the selection with shift+click, finds runs again, refreshes the labels of visible untranslated compounds, and redraws an open positions panel. |
 | `Draw.Write`, `Draw.ClearSelected` | Postfix: marks the glyph layout as changed, so runs are found again after the redraw, in the same frame. |
