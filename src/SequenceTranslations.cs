@@ -15,13 +15,15 @@ namespace CompoundTranslations
     //
     // A sentence is the glyphs one Draw.Write call placed on one source line, which may wrap
     // across rows. Lines that list separate glyphs are not sentences (IsList). A run is
-    // identified by its glyph IDs in order, with "." for each space between them, counted
-    // across wraps as Write laid them out (AddGaps). Translations are stored in
-    // Global.savedata.dict under KeyPrefix + the run, so they are saved with the game's save slot.
-    // The game only reads that dictionary by word, never enumerates it.
+    // identified by its glyph IDs in order. It cannot span a space, counted across wraps as
+    // Write laid them out (AddGaps). Translations are stored in Global.savedata.dict under
+    // KeyPrefix + the run, so they are saved with the game's save slot. The game only reads
+    // that dictionary by word, never enumerates it.
     internal static class SequenceTranslations
     {
         internal const string KeyPrefix = "compoundtranslations.sequence:";
+        // The token of an empty cell. Older versions saved runs with it, one per space; those
+        // runs are never matched now, and stay in the save untouched.
         private const string Gap = ".";
         private const int CharacterLimit = 200;
 
@@ -296,6 +298,8 @@ namespace CompoundTranslations
                 return true;
             }
             covering.TryGetValue(ac, out var cov);
+            // A selection that cannot be a run, as one across a space, is not made: the click
+            // edits the clicked glyph, or the run that covers it, and a new selection starts there.
             if (ShiftClick && lastFrame == Time.frameCount && lastSentence == at.Sentence)
             {
                 var start = Math.Min(lastStart, cov?.Start ?? at.Index);
@@ -346,7 +350,7 @@ namespace CompoundTranslations
             for (var i = start; i <= end; i++)
             {
                 var t = s.Cells[i].Token;
-                if (t == null || ((i == start || i == end) && t == Gap))
+                if (t == null || t == Gap)
                 {
                     return null;
                 }
@@ -675,7 +679,7 @@ namespace CompoundTranslations
                     continue;
                 }
                 var tokens = kv.Key.Substring(KeyPrefix.Length).Split(' ');
-                if (tokens.Length < 2)
+                if (tokens.Length < 2 || Array.IndexOf(tokens, Gap) >= 0)
                 {
                     continue;
                 }
