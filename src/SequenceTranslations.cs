@@ -581,6 +581,7 @@ namespace CompoundTranslations
                 return;
             }
             var bySentence = new Dictionary<(WriteCall, int), Sentence>();
+            var isOption = SettingOptions.For(Global.manager);
             // Rows are filled top to bottom, which is decreasing y, and left to right.
             for (var y = slots.GetLength(1) - 1; y >= 0; y--)
             {
@@ -603,7 +604,8 @@ namespace CompoundTranslations
                     {
                         AddGaps(s, last, p, x, y);
                     }
-                    var eligible = ac.sp != null && ac.sp.enabled && ac.showtxt && ac.txt != null && !string.IsNullOrEmpty(ac.alien_txt);
+                    // A settings page's option glyph keeps its cell but never joins a run.
+                    var eligible = ac.sp != null && ac.sp.enabled && ac.showtxt && ac.txt != null && !string.IsNullOrEmpty(ac.alien_txt) && !(isOption?.Invoke(ac) ?? false);
                     cellOf[ac] = (s, s.Cells.Count);
                     s.Cells.Add(new Cell { Ac = ac, Token = eligible ? ac.alien_txt : null, X = x, Y = y, LineX = p.LineX, LineY = p.LineY });
                 }
