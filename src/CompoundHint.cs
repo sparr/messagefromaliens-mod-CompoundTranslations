@@ -262,23 +262,53 @@ namespace CompoundTranslations
             }
         }
 
-        // Re-render visible labels of untranslated compounds, whose hints may depend on
-        // any word below them.
-        internal static void RefreshVisible(AlienCharacter except)
+        // Re-render visible labels of untranslated compounds that contain the changed word at
+        // any depth, since their hints may show it, or of all of them when changed is null. The
+        // game itself refreshes the labels of the changed word, as of except, the label edited.
+        internal static void RefreshVisible(string changed, AlienCharacter except = null)
         {
             var slots = Global.manager?.alien_slots;
             if (slots == null)
             {
                 return;
             }
+            var canonical = Canonical(changed);
+            var contains = new Dictionary<string, bool>();
             foreach (var ac in slots)
             {
                 if (ac != null && ac != except && ac.showtxt && ac.gameObject.activeInHierarchy
-                    && GetStructure(ac.alien_txt) != null && !IsTranslated(ac.alien_txt))
+                    && GetStructure(ac.alien_txt) != null && !IsTranslated(ac.alien_txt)
+                    && (changed == null || Contains(ac.alien_txt, changed, canonical, contains)))
                 {
                     ac.UpdateEarthText();
                 }
             }
+        }
+
+        // Whether the word is built from the part, as given or as its canonical word, at any
+        // depth. memo holds the answers so far, and false for words still being worked out.
+        private static bool Contains(string word, string part, string canonical, Dictionary<string, bool> memo)
+        {
+            if (memo.TryGetValue(word, out var known))
+            {
+                return known;
+            }
+            memo[word] = false;
+            var result = false;
+            var structure = GetStructure(word);
+            if (structure != null)
+            {
+                foreach (var p in structure.Parts)
+                {
+                    if (p == part || p == canonical || Contains(p, part, canonical, memo))
+                    {
+                        result = true;
+                        break;
+                    }
+                }
+            }
+            memo[word] = result;
+            return result;
         }
     }
 }

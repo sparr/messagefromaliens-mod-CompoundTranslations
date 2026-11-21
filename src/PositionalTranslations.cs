@@ -235,7 +235,7 @@ namespace CompoundTranslations
         {
             if (SavedValues.Store(Key(slot, word), s))
             {
-                CompoundHint.RefreshVisible(null);
+                CompoundHint.RefreshVisible(word);
                 RefreshHistory();
             }
         }

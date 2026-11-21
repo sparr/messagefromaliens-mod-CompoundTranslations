@@ -98,7 +98,8 @@ namespace CompoundTranslations
             return !__state;
         }
 
-        // The game only refreshes labels of the edited word; also refresh visible compounds.
+        // The game only refreshes labels of the edited word; also refresh visible compounds built
+        // from it.
         private static void Postfix(AlienCharacter __instance, bool __state)
         {
             if (__state)
@@ -108,7 +109,7 @@ namespace CompoundTranslations
             try
             {
                 SequenceTranslations.AfterGlyphEndEdit(__instance);
-                CompoundHint.RefreshVisible(__instance);
+                CompoundHint.RefreshVisible(__instance?.alien_txt, __instance);
                 // An open positions panel shows the word's translation as its fallback.
                 PositionalTranslations.MarkDirty();
             }
