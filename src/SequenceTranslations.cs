@@ -147,9 +147,6 @@ namespace CompoundTranslations
             }
         }
 
-        // A value of "?", which the game writes for an untranslated word, is no translation.
-        internal static bool IsBlank(string value) => string.IsNullOrWhiteSpace(value) || value.Trim() == "?";
-
         private static bool Enabled => Plugin.Sequences.Value;
 
         private static bool Visible => !Global.hideUi && !(Global.globalData?.hidetranslation ?? false);
@@ -461,11 +458,7 @@ namespace CompoundTranslations
             }
         }
 
-        private static string Translation(string key)
-        {
-            var dict = Global.savedata?.dict;
-            return dict != null && dict.TryGetValue(key, out var t) && !IsBlank(t) ? t : "";
-        }
+        private static string Translation(string key) => SavedValues.Get(key) ?? "";
 
         private static void Refresh()
         {
@@ -676,7 +669,7 @@ namespace CompoundTranslations
             }
             foreach (var kv in dict)
             {
-                if (!kv.Key.StartsWith(KeyPrefix, StringComparison.Ordinal) || IsBlank(kv.Value))
+                if (!kv.Key.StartsWith(KeyPrefix, StringComparison.Ordinal) || SavedValues.IsBlank(kv.Value))
                 {
                     continue;
                 }
@@ -1004,24 +997,7 @@ namespace CompoundTranslations
                 {
                     return;
                 }
-                var dict = Global.savedata?.dict;
-                if (dict != null)
-                {
-                    var t = IsBlank(s) ? "" : s.Trim();
-                    var had = dict.TryGetValue(occ.Key, out var old);
-                    if (t == "" ? had : old != t)
-                    {
-                        if (t == "")
-                        {
-                            dict.Remove(occ.Key);
-                        }
-                        else
-                        {
-                            dict[occ.Key] = t;
-                        }
-                        Global.SaveGame();
-                    }
-                }
+                SavedValues.Store(occ.Key, s);
                 if (pending != null && pending.Same(occ))
                 {
                     pending = null;

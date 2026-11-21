@@ -225,15 +225,8 @@ namespace CompoundTranslations
         }
 
         // The word's translation for the slot, or null when it has none or the feature is off.
-        internal static string Get(string word, string slot)
-        {
-            if (!Enabled || slot == null || string.IsNullOrEmpty(word))
-            {
-                return null;
-            }
-            var dict = Global.savedata?.dict;
-            return dict != null && dict.TryGetValue(Key(slot, word), out var t) && !SequenceTranslations.IsBlank(t) ? t.Trim() : null;
-        }
+        internal static string Get(string word, string slot) =>
+            !Enabled || slot == null || string.IsNullOrEmpty(word) ? null : SavedValues.Get(Key(slot, word));
 
         private static string Key(string slot, string word) => KeyPrefix + slot + ":" + word;
 
@@ -241,25 +234,8 @@ namespace CompoundTranslations
         // shows it.
         internal static void Save(string word, string slot, string s)
         {
-            var dict = Global.savedata?.dict;
-            if (dict == null)
+            if (SavedValues.Store(Key(slot, word), s))
             {
-                return;
-            }
-            var key = Key(slot, word);
-            var t = SequenceTranslations.IsBlank(s) ? "" : s.Trim();
-            var had = dict.TryGetValue(key, out var old);
-            if (t == "" ? had : old != t)
-            {
-                if (t == "")
-                {
-                    dict.Remove(key);
-                }
-                else
-                {
-                    dict[key] = t;
-                }
-                Global.SaveGame();
                 CompoundHint.RefreshVisible(null);
                 RefreshHistory();
             }
