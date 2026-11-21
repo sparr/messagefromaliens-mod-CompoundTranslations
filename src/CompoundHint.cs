@@ -38,7 +38,7 @@ namespace CompoundTranslations
         internal static bool IsTranslated(string word)
         {
             var dict = Global.savedata?.dict;
-            return dict != null && dict.TryGetValue(word, out var t) && t != null && t.Trim() != "" && t != Unknown;
+            return dict != null && dict.TryGetValue(word, out var t) && !SequenceTranslations.IsBlank(t);
         }
 
         // Returns the text to show in place of an untranslated word's "?", or null to keep "?".
