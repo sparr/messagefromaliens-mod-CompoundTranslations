@@ -222,20 +222,11 @@ namespace CompoundTranslations
             return !string.IsNullOrEmpty(rename) && rename != part && words.ContainsKey(rename) ? rename : part;
         }
 
-        // The game's label color and its dimmed color for finished items. The fallbacks copy
-        // Draw.DefaultColor(0) and Draw.DefaultColor(3) for when Global.manager is not set yet.
-        internal static Color NormalColor() => Global.manager != null ? Global.manager.DefaultColor(0) : Global.FrontColor();
+        // The game's label color and its dimmed color for finished items. Global.manager is set
+        // before any glyph is drawn.
+        internal static Color NormalColor() => Global.manager.DefaultColor(0);
 
-        internal static Color FinishedColor()
-        {
-            if (Global.manager != null)
-            {
-                return Global.manager.DefaultColor(3);
-            }
-            var f = Global.FrontColor();
-            var b = Global.BackColor();
-            return new Color((f.r + b.r * 1.5f) / 2.5f, (f.g + b.g * 1.5f) / 2.5f, (f.b + b.b * 1.5f) / 2.5f);
-        }
+        internal static Color FinishedColor() => Global.manager.DefaultColor(3);
 
         internal static void Apply(AlienCharacter ac)
         {

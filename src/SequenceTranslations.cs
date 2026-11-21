@@ -131,8 +131,6 @@ namespace CompoundTranslations
 
         private static bool Enabled => Plugin.Sequences.Value;
 
-        private static bool Visible => !Global.hideUi && !(Global.globalData?.hidetranslation ?? false);
-
         internal static void MarkDirty() => dirty = true;
 
         internal static void MarkChanged() => needsRender = true;
@@ -147,7 +145,7 @@ namespace CompoundTranslations
                     deferred = null;
                     d();
                 }
-                if (Visible != lastVisible)
+                if (Plugin.Visible != lastVisible)
                 {
                     needsRender = true;
                 }
@@ -219,9 +217,9 @@ namespace CompoundTranslations
         private static void UpdateReveal()
         {
             Occurrence next = null;
-            if (Plugin.RevealOnHover.Value && Enabled && Visible && editing == null && pending == null && !labels.Exists(l => ModFields.InUse(l.Field)))
+            if (Plugin.RevealOnHover.Value && Enabled && Plugin.Visible && editing == null && pending == null && !labels.Exists(l => ModFields.InUse(l.Field)))
             {
-                var ac = HoveredGlyph();
+                var ac = Plugin.GlyphUnderMouse();
                 if (ac != null && cellOf.TryGetValue(ac, out var at))
                 {
                     if (revealed != null && revealed.Sentence == at.Sentence && at.Index >= revealed.Start && at.Index <= revealed.End)
@@ -239,16 +237,6 @@ namespace CompoundTranslations
                 revealed = next;
                 needsRender = true;
             }
-        }
-
-        private static AlienCharacter HoveredGlyph()
-        {
-            var cam = Camera.main;
-            if (cam == null || !Physics.Raycast(cam.ScreenPointToRay(Input.mousePosition), out var hit))
-            {
-                return null;
-            }
-            return hit.transform.GetComponentInParent<AlienCharacter>();
         }
 
         // StartEdit prefix. Returns false to replace the glyph's own edit with a run's.
@@ -272,7 +260,7 @@ namespace CompoundTranslations
         private static bool StartsOwnEdit(AlienCharacter ac)
         {
             // While translations are hidden, no run labels are drawn to edit.
-            if (!Enabled || !Visible || dirty || ac == null || !cellOf.TryGetValue(ac, out var at))
+            if (!Enabled || !Plugin.Visible || dirty || ac == null || !cellOf.TryGetValue(ac, out var at))
             {
                 return true;
             }
@@ -452,7 +440,7 @@ namespace CompoundTranslations
             Render();
             dirty = false;
             needsRender = false;
-            lastVisible = Visible;
+            lastVisible = Plugin.Visible;
         }
 
         // Draw.Write postfix: record the call's layout and which glyphs it drew.
@@ -682,7 +670,7 @@ namespace CompoundTranslations
             pending = Rebind(pending);
             revealed = Rebind(revealed);
             // While translations are hidden, glyphs inside runs edit and show as their own.
-            if (Enabled && Visible)
+            if (Enabled && Plugin.Visible)
             {
                 var runs = LoadRuns();
                 foreach (var s in sentences)
@@ -821,7 +809,7 @@ namespace CompoundTranslations
         private static void Render()
         {
             var manager = Global.manager;
-            var show = manager != null && Visible;
+            var show = manager != null && Plugin.Visible;
 
             // A label keeps its run while that run still matches, so a change elsewhere, such as
             // a run revealed on hover, rewrites no other label. A label being edited, or selected

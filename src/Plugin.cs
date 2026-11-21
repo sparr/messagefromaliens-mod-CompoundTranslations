@@ -4,6 +4,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using UnityEngine;
 
 // The mod's name in glyphs, as game word IDs, for Mod Settings and any other mod that lists mods.
 [assembly: AssemblyMetadata("MessageFromAliens.Name", "translate radicial")]
@@ -30,6 +31,16 @@ namespace CompoundTranslations
         internal const string PositionsUnsetGlyph = "no";
 
         internal static ManualLogSource Log;
+
+        // Whether the game shows translations: neither the interface nor translations are hidden.
+        internal static bool Visible => !Global.hideUi && !(Global.globalData?.hidetranslation ?? false);
+
+        // The glyph under the mouse, or null.
+        internal static AlienCharacter GlyphUnderMouse()
+        {
+            var cam = Camera.main;
+            return cam != null && Physics.Raycast(cam.ScreenPointToRay(Input.mousePosition), out var hit) ? hit.transform.GetComponentInParent<AlienCharacter>() : null;
+        }
         internal static ConfigEntry<QuotedString> Separator;
         internal static ConfigEntry<QuotedString> Brackets;
         internal static ConfigEntry<int> Depth;

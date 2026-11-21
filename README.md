@@ -106,10 +106,9 @@ For a game folder outside a Steam library, set `GameDir` to the game folder the 
 | `AlienCharacter.LateUpdate` | Prefix: on the frame a position translation's edit starts, keeps that translation in the label, where the game would put the word's own. |
 | `AlienCharacter.EndEdit` | Prefix: skips the game's end of edit, its save included, for a glyph whose edit was replaced by a run's, and for a position translation's edit, which it saves instead. Postfix: records the glyph for extending the selection with shift+click, finds runs again, refreshes the labels of visible untranslated compounds built from the glyph's word, and redraws an open positions panel. |
 | `Draw.Write` (list overload) | Postfix: records which call drew each glyph and that call's row layout, so lines from separate calls stay separate sentences, spaces at a wrap are counted, and lists are left out. Finds the part glyphs of a compound's composition line in the left panel. |
-| `Draw.Write`, `Draw.ClearSelected` | Postfix: marks the glyph layout as changed, so runs are found again after the redraw, in the same frame. |
-| `Draw.ClearSelected` | Prefix: ends the edit of a run's label as a redraw starts, so it is saved under that run. |
+| `Draw.ClearSelected` | Prefix: ends the edit of a run's label as a redraw starts, so it is saved under that run. Postfix: marks the glyph layout as changed, so runs are found again after the redraw, in the same frame. |
 | `Draw.Update` | Prefix: Tab from a glyph label selects the next position field when one comes before the next label, or with Interface Tweaks' order, the previous one for Shift+Tab. |
-| `Draw.UpdateText1` | Prefix: rewrites the position translations button in the left panel's history, so every entry shows whether its glyph has position translations. Postfix: marks the left panel as changed, so the button's underline and the position translations panel are built again after the redraw, in the same frame. |
+| `Draw.UpdateText1` | Prefix: rewrites the position translations button in the left panel's history, so every entry shows whether its glyph has position translations. Postfix: marks the left panel as changed, so the position translations button and panel are found and built again after the redraw, in the same frame. |
 | `Draw.PushLeftText` | Prefix: adds the glyphs that open the position translations panel to a word's information text. |
 | `HardwareCursor.Apply` | Prefix: gives the cursor the clickable color over the position translations button. |
 

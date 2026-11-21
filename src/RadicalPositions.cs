@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using HarmonyLib;
-using UnityEngine.EventSystems;
 
 namespace CompoundTranslations
 {
@@ -92,7 +91,7 @@ namespace CompoundTranslations
         internal static void Apply(AlienCharacter ac)
         {
             if (ac?.txt == null || !ac.showtxt || ac.txt.isFocused || ModFields.InUse(ac.txt)
-                || Global.hideUi || Global.globalData.hidetranslation || Global.testword
+                || !Plugin.Visible || Global.testword
                 || !parts.TryGetValue(ac, out var p))
             {
                 return;
@@ -142,11 +141,7 @@ namespace CompoundTranslations
             }
             editing.Remove(ac);
             PositionalTranslations.Save(p.Word, p.Slot, s);
-            var es = EventSystem.current;
-            if (!ac.txt.isFocused && es != null && !es.alreadySelecting && es.currentSelectedGameObject == ac.txt.gameObject)
-            {
-                es.SetSelectedGameObject(null);
-            }
+            ModFields.Release(ac.txt);
             ac.UpdateEarthText();
             return true;
         }

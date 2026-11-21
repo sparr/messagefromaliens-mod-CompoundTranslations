@@ -69,8 +69,6 @@ namespace CompoundTranslations
         }
 
         private static readonly List<Shape> shapes = new List<Shape>();
-        // Underlines below the button glyphs, drawn like the game's menu links.
-        private static readonly List<LineRenderer> underlines = new List<LineRenderer>();
         private static readonly List<Field> fields = new List<Field>();
         // The word whose information panel, with the button glyphs, is shown, or null.
         private static string buttonWord;
@@ -85,15 +83,13 @@ namespace CompoundTranslations
 
         private static bool Enabled => Plugin.Positions.Value;
 
-        private static bool Visible => !Global.hideUi && !(Global.globalData?.hidetranslation ?? false);
-
         internal static void MarkDirty() => dirty = true;
 
         // PushLeftText prefix: adds the button glyphs to a word's information text.
         internal static void Decorate(string title, ref string info)
         {
             // While translations are hidden, the panel's fields are not drawn, so no button.
-            if (Enabled && Visible && IsWordInfo(title, info) && !info.Contains(ButtonMarker) && EncounteredPositions.HasAny(title))
+            if (Enabled && Plugin.Visible && IsWordInfo(title, info) && !info.Contains(ButtonMarker) && EncounteredPositions.HasAny(title))
             {
                 var i = info.IndexOf(BlankLine, StringComparison.Ordinal);
                 if (i >= 0)
@@ -108,23 +104,20 @@ namespace CompoundTranslations
 
         private static string ButtonGlyphs(bool set) => Plugin.PositionGlyphs + " " + (set ? Plugin.PositionsSetGlyph : Plugin.PositionsUnsetGlyph);
 
-        private static string ButtonLine(string word) => "newline " + ButtonGlyphs(HasAny(word)) + " " + ButtonMarker + " newline ";
+        // The button line around its indicator glyph. Draw.Write underlines the glyphs between
+        // { and }, as it does a menu link's, and the braces take no cell.
+        private const string ButtonOpen = "newline { " + Plugin.PositionGlyphs + " ";
+        private const string ButtonClose = " } " + ButtonMarker + " newline ";
+
+        private static string ButtonLine(string word) =>
+            ButtonOpen + (HasAny(word) ? Plugin.PositionsSetGlyph : Plugin.PositionsUnsetGlyph) + ButtonClose;
 
         // Removes the button line, whichever indicator it shows, restoring the empty line.
         private static string Strip(string info)
         {
-            var end = info.IndexOf(ButtonMarker + " newline ", StringComparison.Ordinal);
-            if (end < 0)
-            {
-                return info;
-            }
-            var start = info.LastIndexOf("newline " + Plugin.PositionGlyphs + " ", end, StringComparison.Ordinal);
-            if (start < 0)
-            {
-                return info;
-            }
-            end += ButtonMarker.Length + " newline ".Length;
-            return info.Substring(0, start) + BlankLine + info.Substring(end);
+            var end = info.IndexOf(ButtonClose, StringComparison.Ordinal);
+            var start = end < 0 ? -1 : info.LastIndexOf(ButtonOpen, end, StringComparison.Ordinal);
+            return start < 0 ? info : info.Substring(0, start) + BlankLine + info.Substring(end + ButtonClose.Length);
         }
 
         private static bool HasAny(string word)
@@ -209,11 +202,7 @@ namespace CompoundTranslations
         {
             switch (relation)
             {
-                case PosRelation.LeftRight:
-                    return part == 0 ? "left" : "right";
-                case PosRelation.UpDown:
-                    return part == 0 ? "top" : "bottom";
-                case PosRelation.Out_In:
+                // The other Out_ relations push the inner part toward a corner or side.
                 case PosRelation.Out_UpRight:
                 case PosRelation.Out_UpLeft:
                 case PosRelation.Out_DownRight:
@@ -222,10 +211,17 @@ namespace CompoundTranslations
                 case PosRelation.Out_Down:
                 case PosRelation.Out_Left:
                 case PosRelation.Out_Right:
-                    return part == 0 ? "outside" : "inside";
-                default:
-                    return null;
+                    relation = PosRelation.Out_In;
+                    break;
             }
+            foreach (var v in Variants)
+            {
+                if (v.Relation == relation && v.WordFirst == (part == 0))
+                {
+                    return v.Slot;
+                }
+            }
+            return null;
         }
 
         // The word's translation for the slot, or null when it has none or the feature is off.
@@ -258,9 +254,9 @@ namespace CompoundTranslations
                 var wins = Global.savedata?.win?.Count ?? 0;
                 // Drawing a word for the first time can give its parts positions.
                 var encountered = Enabled ? EncounteredPositions.Version : lastEncountered;
-                if (Visible != lastVisible || wins != lastWins || !ReferenceEquals(Global.savedata, lastSave) || encountered != lastEncountered)
+                if (Plugin.Visible != lastVisible || wins != lastWins || !ReferenceEquals(Global.savedata, lastSave) || encountered != lastEncountered)
                 {
-                    lastVisible = Visible;
+                    lastVisible = Plugin.Visible;
                     lastWins = wins;
                     lastSave = Global.savedata;
                     lastEncountered = encountered;
@@ -273,7 +269,7 @@ namespace CompoundTranslations
                 }
                 PositionFields();
                 TabFromField();
-                if (buttonWord != null && Input.GetMouseButtonDown(0) && IsButtonGlyph(ClickedGlyph()))
+                if (buttonWord != null && Input.GetMouseButtonDown(0) && IsButtonGlyph(Plugin.GlyphUnderMouse()))
                 {
                     Global.manager.PushLeftText(PanelTitle(buttonWord), Marker);
                     Global.manager.UpdateText();
@@ -294,7 +290,7 @@ namespace CompoundTranslations
         private static bool LeftPanelChanged()
         {
             var m = Global.manager;
-            var on = Enabled && Visible && m?.text_history != null;
+            var on = Enabled && Plugin.Visible && m?.text_history != null;
             var index = on ? m.currenttext : -1;
             var entry = on && index >= 0 && index < m.text_history.Count ? m.text_history[index] : null;
             var page = entry != null && m.currentleftpage != null && index < m.currentleftpage.Count ? m.currentleftpage[index] : 0;
@@ -317,7 +313,7 @@ namespace CompoundTranslations
         {
             isPanel = false;
             var m = Global.manager;
-            if (!Enabled || !Visible || m == null || m.text_history == null || m.currenttext < 0 || m.currenttext >= m.text_history.Count)
+            if (!Enabled || !Plugin.Visible || m == null || m.text_history == null || m.currenttext < 0 || m.currenttext >= m.text_history.Count)
             {
                 return null;
             }
@@ -374,14 +370,6 @@ namespace CompoundTranslations
                 }
             }
             shapes.Clear();
-            foreach (var u in underlines)
-            {
-                if (u != null)
-                {
-                    UnityEngine.Object.Destroy(u.gameObject);
-                }
-            }
-            underlines.Clear();
             buttonWord = null;
             foreach (var f in fields)
             {
@@ -403,32 +391,6 @@ namespace CompoundTranslations
             else
             {
                 buttonWord = word;
-                UnderlineButton(m);
-            }
-        }
-
-        // Underlines each button glyph the way Draw.Write underlines a menu link's glyphs: a
-        // line 0.92 below the glyph's center in color 3, spanning its cell, but starting 0.45
-        // left of center in the panel's first column.
-        private static void UnderlineButton(Draw m)
-        {
-            var slots = m.alien_slots;
-            if (slots == null)
-            {
-                return;
-            }
-            for (var x = 0; x < slots.GetLength(0); x++)
-            {
-                for (var y = 0; y < slots.GetLength(1); y++)
-                {
-                    var ac = slots[x, y];
-                    if (ac == null || ac.sp == null || !ac.gameObject.activeInHierarchy || !IsButtonGlyph(ac))
-                    {
-                        continue;
-                    }
-                    var p = ac.sp.transform.position;
-                    underlines.Add(m.DrawLineRenderer(p + new Vector3(x == 0 ? -0.45f : -0.5f, -0.92f), p + new Vector3(0.5f, -0.92f), 3));
-                }
             }
         }
 
@@ -622,18 +584,8 @@ namespace CompoundTranslations
             }
         }
 
-        private static AlienCharacter ClickedGlyph()
-        {
-            var cam = Camera.main;
-            if (cam == null || !Physics.Raycast(cam.ScreenPointToRay(Input.mousePosition), out var hit))
-            {
-                return null;
-            }
-            return hit.transform.GetComponentInParent<AlienCharacter>();
-        }
-
         // Whether the mouse is over one of the position buttons of the shown information panel.
-        internal static bool OverButton() => buttonWord != null && IsButtonGlyph(ClickedGlyph());
+        internal static bool OverButton() => buttonWord != null && IsButtonGlyph(Plugin.GlyphUnderMouse());
 
         // One of the button glyphs: a left panel glyph on the line that holds only them.
         private static bool IsButtonGlyph(AlienCharacter ac)

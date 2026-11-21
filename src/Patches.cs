@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using HarmonyLib;
 
 namespace CompoundTranslations
@@ -120,24 +119,6 @@ namespace CompoundTranslations
         }
     }
 
-    // Any redraw of glyphs makes the sequence scan stale.
-    [HarmonyPatch]
-    internal static class WritePatch
-    {
-        private static IEnumerable<MethodBase> TargetMethods()
-        {
-            foreach (var m in AccessTools.GetDeclaredMethods(typeof(Draw)))
-            {
-                if (m.Name == nameof(Draw.Write) || m.Name == nameof(Draw.ClearSelected))
-                {
-                    yield return m;
-                }
-            }
-        }
-
-        private static void Postfix() => SequenceTranslations.MarkDirty();
-    }
-
     // Records which call drew each glyph, and that call's row layout, so sentences are kept
     // apart by call and the empty cells at a wrap can be counted. The string overload calls
     // this one.
@@ -159,7 +140,8 @@ namespace CompoundTranslations
     }
 
     // A redraw starts by clearing the screen's lines: end a run label's edit first, while its
-    // run is still known.
+    // run is still known. Every glyph is drawn inside a redraw, after this, so the sequence scan
+    // is stale from then on.
     [HarmonyPatch(typeof(Draw), nameof(Draw.ClearSelected))]
     internal static class ClearSelectedPatch
     {
@@ -174,6 +156,8 @@ namespace CompoundTranslations
                 Plugin.Log.LogError($"ClearSelected prefix failed: {e}");
             }
         }
+
+        private static void Postfix() => SequenceTranslations.MarkDirty();
     }
 
     // The game gives the cursor the color of nothing clickable for the position buttons; give it
