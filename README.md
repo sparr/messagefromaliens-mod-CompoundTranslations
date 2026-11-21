@@ -109,9 +109,8 @@ For a game folder outside a Steam library, set `GameDir` to the game folder the 
 | `Draw.Write`, `Draw.ClearSelected` | Postfix: marks the glyph layout as changed, so runs are found again after the redraw, in the same frame. |
 | `Draw.ClearSelected` | Prefix: ends the edit of a run's label as a redraw starts, so it is saved under that run. |
 | `Draw.Update` | Prefix: Tab from a glyph label selects the next position field when one comes before the next label, or with Interface Tweaks' order, the previous one for Shift+Tab. |
-| `Draw.UpdateText1` | Prefix: rewrites the position translations button in the left panel's history, so every entry shows whether its glyph has position translations. |
+| `Draw.UpdateText1` | Prefix: rewrites the position translations button in the left panel's history, so every entry shows whether its glyph has position translations. Postfix: marks the left panel as changed, so the button's underline and the position translations panel are built again after the redraw, in the same frame. |
 | `Draw.PushLeftText` | Prefix: adds the glyphs that open the position translations panel to a word's information text. |
-| `Draw.UpdateText` | Postfix: marks the left panel as changed, so the position translations panel is drawn again after the redraw, in the same frame. |
 | `HardwareCursor.Apply` | Prefix: gives the cursor the clickable color over the position translations button. |
 
 Each applied hint is logged at the `Debug` level.

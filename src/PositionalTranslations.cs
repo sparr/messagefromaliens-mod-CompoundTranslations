@@ -74,7 +74,12 @@ namespace CompoundTranslations
         private static readonly List<Field> fields = new List<Field>();
         // The word whose information panel, with the button glyphs, is shown, or null.
         private static string buttonWord;
-        private static string shownState;
+        // What the left panel showed when the button or panel was last built.
+        private static bool shownOn;
+        private static int shownIndex;
+        private static string shownEntry;
+        private static int shownPage;
+        // Set when the left panel may show something else, as after a redraw.
         private static bool dirty = true;
         private static bool loggedError;
 
@@ -261,12 +266,10 @@ namespace CompoundTranslations
                     lastEncountered = encountered;
                     RefreshHistory();
                 }
-                var state = CurrentState(out var word, out var isPanel);
-                if (dirty || state != shownState)
+                if (dirty || LeftPanelChanged())
                 {
                     dirty = false;
-                    shownState = state;
-                    Rebuild(word, isPanel);
+                    Rebuild(Shown(out var isPanel), isPanel);
                 }
                 PositionFields();
                 TabFromField();
@@ -286,19 +289,39 @@ namespace CompoundTranslations
             }
         }
 
-        // Describes what the left panel shows, so a change is noticed even without a redraw.
-        // word is the panel's word when it is a word's information panel or this mod's panel.
-        private static string CurrentState(out string word, out bool isPanel)
+        // Whether the left panel's shown entry, its page, or whether the mod shows anything
+        // changed since the last build, as can happen without a redraw. Records the new state.
+        private static bool LeftPanelChanged()
         {
-            word = null;
+            var m = Global.manager;
+            var on = Enabled && Visible && m?.text_history != null;
+            var index = on ? m.currenttext : -1;
+            var entry = on && index >= 0 && index < m.text_history.Count ? m.text_history[index] : null;
+            var page = entry != null && m.currentleftpage != null && index < m.currentleftpage.Count ? m.currentleftpage[index] : 0;
+            if (on == shownOn && index == shownIndex && ReferenceEquals(entry, shownEntry) && page == shownPage)
+            {
+                return false;
+            }
+            shownOn = on;
+            shownIndex = index;
+            shownEntry = entry;
+            shownPage = page;
+            return true;
+        }
+
+        // The word of the left panel when it shows a word's information panel with the button,
+        // or this mod's panel for the word, or null. Another mod, such as Calculator, may draw
+        // over the left panel without a history entry of its own, so the drawn title must be the
+        // entry's.
+        private static string Shown(out bool isPanel)
+        {
             isPanel = false;
             var m = Global.manager;
             if (!Enabled || !Visible || m == null || m.text_history == null || m.currenttext < 0 || m.currenttext >= m.text_history.Count)
             {
                 return null;
             }
-            var entry = m.text_history[m.currenttext];
-            if (!SplitEntry(entry, out var title, out _, out var info))
+            if (!SplitEntry(m.text_history[m.currenttext], out var title, out _, out var info))
             {
                 return null;
             }
@@ -312,7 +335,6 @@ namespace CompoundTranslations
             {
                 return null;
             }
-            var page = m.currentleftpage != null && m.currenttext < m.currentleftpage.Count ? m.currentleftpage[m.currenttext] : 0;
             if (info == Marker)
             {
                 isPanel = true;
@@ -321,14 +343,7 @@ namespace CompoundTranslations
             {
                 return null;
             }
-            // Another mod, such as Calculator, may draw over the left panel without a history
-            // entry of its own, so the drawn title must be the entry's.
-            if (DrawnTitle(m) != (isPanel ? PanelTitle(title) : title))
-            {
-                return null;
-            }
-            word = title;
-            return m.currenttext + "\n" + entry + "\n" + page;
+            return DrawnTitle(m) == (isPanel ? PanelTitle(title) : title) ? title : null;
         }
 
         // The words of the left panel's title as drawn, or null when it shows none.

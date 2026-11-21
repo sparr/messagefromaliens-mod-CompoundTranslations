@@ -216,6 +216,7 @@ namespace CompoundTranslations
     }
 
     // The left panel is drawn from its history: bring the entries' position buttons up to date.
+    // The redraw may change the left panel, so the position button and panel are rebuilt after.
     [HarmonyPatch(typeof(Draw), nameof(Draw.UpdateText1))]
     internal static class UpdateText1Patch
     {
@@ -230,6 +231,8 @@ namespace CompoundTranslations
                 Plugin.Log.LogError($"UpdateText1 prefix failed: {e}");
             }
         }
+
+        private static void Postfix() => PositionalTranslations.MarkDirty();
     }
 
     // The game's Tab handler moves only between its own labels; Tab into a position field is
@@ -250,10 +253,4 @@ namespace CompoundTranslations
         }
     }
 
-    // A redraw may change the left panel, so the position button and panel are rebuilt.
-    [HarmonyPatch(typeof(Draw), nameof(Draw.UpdateText))]
-    internal static class UpdateTextPatch
-    {
-        private static void Postfix() => PositionalTranslations.MarkDirty();
-    }
 }
