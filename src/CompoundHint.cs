@@ -241,7 +241,7 @@ namespace CompoundTranslations
         {
             // A label being edited, or selected and about to be, keeps the text the game gave it,
             // so the hint is never what the player starts editing.
-            if (ac == null || ac.txt == null || !ac.showtxt || SequenceTranslations.InUse(ac.txt))
+            if (ac == null || ac.txt == null || !ac.showtxt || ModFields.InUse(ac.txt))
             {
                 return;
             }

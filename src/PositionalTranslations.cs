@@ -33,7 +33,6 @@ namespace CompoundTranslations
         private const string ButtonMarker = "[compoundtranslations.positionbutton]";
         // The end of the composition line and the empty line after it, as the game writes them.
         private const string BlankLine = "newline  newline ";
-        private const int CharacterLimit = 200;
 
         private sealed class Variant
         {
@@ -371,7 +370,7 @@ namespace CompoundTranslations
             buttonWord = null;
             foreach (var f in fields)
             {
-                if (f.Input != null && !SequenceTranslations.InUse(f.Input))
+                if (f.Input != null && !ModFields.InUse(f.Input))
                 {
                     f.Input.gameObject.SetActive(false);
                     f.Variant = null;
@@ -431,13 +430,12 @@ namespace CompoundTranslations
                 DrawCompound(m, word, v.Relation, v.WordFirst, v.X, v.Y, EncounteredPositions.Modifier(canonical, v.Slot));
                 while (fields.Count <= i)
                 {
-                    var f = new Field { Input = CreateInput(m, "CompoundTranslations.Position" + fields.Count) };
-                    f.Input.onSelect.AddListener(_ => OnSelect(f));
-                    f.Input.onEndEdit.AddListener(s => OnEndEdit(f, s));
+                    var f = new Field();
+                    f.Input = CreateInput(m, "CompoundTranslations.Position" + fields.Count, f);
                     fields.Add(f);
                 }
                 var field = fields[i];
-                if (SequenceTranslations.InUse(field.Input))
+                if (ModFields.InUse(field.Input))
                 {
                     continue;
                 }
@@ -473,23 +471,12 @@ namespace CompoundTranslations
 
         private static void OnEndEdit(Field f, string s)
         {
-            try
+            if (f.Variant == null)
             {
-                if (f.Variant == null)
-                {
-                    return;
-                }
-                Save(f.Word, f.Variant.Slot, s);
-                ShowValue(f);
+                return;
             }
-            catch (Exception e)
-            {
-                Plugin.Log.LogError($"Positional translation edit: {e}");
-            }
-            finally
-            {
-                SequenceTranslations.Release(f.Input);
-            }
+            Save(f.Word, f.Variant.Slot, s);
+            ShowValue(f);
         }
 
         // Builds the compound the way AlienInfo.GetCharacter builds a real one with the given
@@ -556,36 +543,19 @@ namespace CompoundTranslations
             shapes.Add(s);
         }
 
-        private static TMP_InputField CreateInput(Draw m, string name)
+        private static TMP_InputField CreateInput(Draw m, string name, Field f)
         {
-            var go = UnityEngine.Object.Instantiate(m.text_prefab);
-            go.name = name;
-            go.transform.SetParent(m.world_canva.transform);
-            var input = go.GetComponent<TMP_InputField>();
-            var model = m.txt_slots?[0, 0];
-            if (model != null)
-            {
-                input.fontAsset = model.fontAsset;
-            }
-            input.characterLimit = CharacterLimit;
-            input.richText = false;
-            input.onSelect.RemoveAllListeners();
-            input.onEndEdit.RemoveAllListeners();
-            // Arrow keys stay in the field instead of moving the selection to a nearby label.
-            var nav = input.navigation;
-            nav.mode = UnityEngine.UI.Navigation.Mode.None;
-            input.navigation = nav;
+            var input = ModFields.Create(m, name, "Positional translation", () => OnSelect(f), s => OnEndEdit(f, s));
             // The prefab has no placeholder; a copy of its text shows the fallback.
             var placeholder = UnityEngine.Object.Instantiate(input.textComponent.gameObject, input.textComponent.transform.parent);
             placeholder.name = "Placeholder";
             input.placeholder = placeholder.GetComponent<TMP_Text>();
-            go.SetActive(false);
+            input.gameObject.SetActive(false);
             return input;
         }
 
-        // Places fields the way Draw.ResetTextPosition places glyph labels (bottom-left pivot,
-        // below the glyph), widened to LabelWidth cells centered on the glyph, with the font
-        // limits of AlienCharacter.UpdatePos.
+        // Each field is placed as a glyph's label is, widened to LabelWidth cells centered on
+        // the glyph.
         private static void PositionFields()
         {
             var cam = Camera.main;
@@ -594,7 +564,7 @@ namespace CompoundTranslations
             {
                 return;
             }
-            var cell = (Vector2)cam.WorldToScreenPoint(m.alien_slots[1, 1].transform.position) - (Vector2)cam.WorldToScreenPoint(m.alien_slots[0, 0].transform.position);
+            var cell = ModFields.CellSize(cam, m);
             foreach (var f in fields)
             {
                 if (f.Variant == null || f.Input == null || !f.Input.gameObject.activeSelf)
@@ -603,16 +573,8 @@ namespace CompoundTranslations
                 }
                 var left = f.Variant.X - LabelWidth / 2;
                 var corner = (Vector3)m.PosToScreenPos(left, f.Variant.Y) + Vector3.down + Vector3.left * 0.5f;
-                Place(f.Input, cam, corner, new Vector2(cell.x * LabelWidth, cell.y / 3f), cell.x);
+                ModFields.Place(f.Input, cam, corner, new Vector2(cell.x * LabelWidth, cell.y / 3f), cell);
             }
-        }
-
-        private static void Place(TMP_InputField input, Camera cam, Vector3 corner, Vector2 size, float cellWidth)
-        {
-            input.transform.position = (Vector2)cam.WorldToScreenPoint(corner);
-            ((RectTransform)input.transform).sizeDelta = size;
-            input.textComponent.fontSizeMax = 0.3f * cellWidth;
-            input.textComponent.textWrappingMode = TextWrappingModes.Normal;
         }
 
         // A field's place in the game's Tab order: the cell of the glyph it translates, in

@@ -91,7 +91,7 @@ namespace CompoundTranslations
         // UpdateEarthText postfix: shows the positional translation in the label.
         internal static void Apply(AlienCharacter ac)
         {
-            if (ac?.txt == null || !ac.showtxt || ac.txt.isFocused || SequenceTranslations.InUse(ac.txt)
+            if (ac?.txt == null || !ac.showtxt || ac.txt.isFocused || ModFields.InUse(ac.txt)
                 || Global.hideUi || Global.globalData.hidetranslation || Global.testword
                 || !parts.TryGetValue(ac, out var p))
             {

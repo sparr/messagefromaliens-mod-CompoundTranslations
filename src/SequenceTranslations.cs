@@ -25,7 +25,6 @@ namespace CompoundTranslations
         // The token of an empty cell. Older versions saved runs with it, one per space; those
         // runs are never matched now, and stay in the save untouched.
         private const string Gap = ".";
-        private const int CharacterLimit = 200;
 
         private sealed class Cell
         {
@@ -130,23 +129,6 @@ namespace CompoundTranslations
         // also moves the selection to the next label, which must not start a run.
         private static bool ShiftClick => Shift && Input.GetMouseButtonDown(0);
 
-        // A field the player is using or about to: focused, or selected with its activation
-        // still queued, as for the frame after a click.
-        internal static bool InUse(TMP_InputField field) =>
-            field != null && (field.isFocused || (EventSystem.current != null && EventSystem.current.currentSelectedGameObject == field.gameObject));
-
-        // An edit that ends without a click, as on Enter or Escape, leaves the field selected,
-        // so the next key would act on it. The game's labels let go the same way in
-        // AlienCharacter.EndEdit.
-        internal static void Release(TMP_InputField field)
-        {
-            var es = EventSystem.current;
-            if (field != null && es != null && !es.alreadySelecting && !field.isFocused && es.currentSelectedGameObject == field.gameObject)
-            {
-                es.SetSelectedGameObject(null);
-            }
-        }
-
         private static bool Enabled => Plugin.Sequences.Value;
 
         private static bool Visible => !Global.hideUi && !(Global.globalData?.hidetranslation ?? false);
@@ -222,7 +204,7 @@ namespace CompoundTranslations
                 return;
             }
             // A label being edited, or selected and about to be, stays visible.
-            if (hidden && InUse(ac.txt))
+            if (hidden && ModFields.InUse(ac.txt))
             {
                 hidden = false;
             }
@@ -237,7 +219,7 @@ namespace CompoundTranslations
         private static void UpdateReveal()
         {
             Occurrence next = null;
-            if (Plugin.RevealOnHover.Value && Enabled && Visible && editing == null && pending == null && !labels.Exists(l => InUse(l.Field)))
+            if (Plugin.RevealOnHover.Value && Enabled && Visible && editing == null && pending == null && !labels.Exists(l => ModFields.InUse(l.Field)))
             {
                 var ac = HoveredGlyph();
                 if (ac != null && cellOf.TryGetValue(ac, out var at))
@@ -848,7 +830,7 @@ namespace CompoundTranslations
             var keptLabels = new HashSet<Label>();
             foreach (var l in labels)
             {
-                if (l.Occ == null || l.Field == null || !(l == editing || InUse(l.Field)))
+                if (l.Occ == null || l.Field == null || !(l == editing || ModFields.InUse(l.Field)))
                 {
                     continue;
                 }
@@ -938,27 +920,8 @@ namespace CompoundTranslations
 
         private static Label CreateLabel(Draw manager)
         {
-            var go = UnityEngine.Object.Instantiate(manager.text_prefab);
-            go.name = "sequence translation";
-            go.transform.SetParent(manager.world_canva.transform);
-            var field = go.GetComponent<TMP_InputField>();
-            var model = manager.txt_slots?[0, 0];
-            if (model != null)
-            {
-                field.fontAsset = model.fontAsset;
-            }
-            field.characterLimit = CharacterLimit;
-            field.richText = false;
-            field.textComponent.color = CompoundHint.NormalColor();
-            field.onSelect.RemoveAllListeners();
-            field.onEndEdit.RemoveAllListeners();
-            // Arrow keys stay in the field instead of moving the selection to a nearby label.
-            var nav = field.navigation;
-            nav.mode = UnityEngine.UI.Navigation.Mode.None;
-            field.navigation = nav;
-            var label = new Label { Field = field };
-            field.onSelect.AddListener(_ => OnLabelSelect(label));
-            field.onEndEdit.AddListener(s => OnLabelEndEdit(label, s));
+            var label = new Label();
+            label.Field = ModFields.Create(manager, "sequence translation", "Sequence translation", () => OnLabelSelect(label), s => OnLabelEndEdit(label, s));
             labels.Add(label);
             return label;
         }
@@ -986,38 +949,25 @@ namespace CompoundTranslations
 
         private static void OnLabelEndEdit(Label label, string s)
         {
-            try
+            if (editing == label)
             {
-                if (editing == label)
-                {
-                    editing = null;
-                }
-                var occ = label.Occ;
-                if (occ == null)
-                {
-                    return;
-                }
-                SavedValues.Store(occ.Key, s);
-                if (pending != null && pending.Same(occ))
-                {
-                    pending = null;
-                }
-                Remember(occ.Sentence, occ.Start, occ.End);
-                needsRender = true;
+                editing = null;
             }
-            catch (Exception e)
+            var occ = label.Occ;
+            if (occ == null)
             {
-                Plugin.Log.LogError($"Sequence translation edit failed: {e}");
+                return;
             }
-            finally
+            SavedValues.Store(occ.Key, s);
+            if (pending != null && pending.Same(occ))
             {
-                Release(label.Field);
+                pending = null;
             }
+            Remember(occ.Sentence, occ.Start, occ.End);
+            needsRender = true;
         }
 
-        // Same placement and sizing as Draw.ResetTextPosition gives each glyph's label
-        // (bottom-left pivot, one cell wide), widened to the run's row, and the same font
-        // limits as AlienCharacter.UpdatePos.
+        // Each label is placed as a glyph's label is, widened to the run's row.
         private static void PositionLabels()
         {
             var cam = Camera.main;
@@ -1026,7 +976,7 @@ namespace CompoundTranslations
             {
                 return;
             }
-            var cell = (Vector2)cam.WorldToScreenPoint(slots[1, 1].transform.position) - (Vector2)cam.WorldToScreenPoint(slots[0, 0].transform.position);
+            var cell = ModFields.CellSize(cam, Global.manager);
             foreach (var label in labels)
             {
                 var occ = label.Occ;
@@ -1045,12 +995,7 @@ namespace CompoundTranslations
                 }
                 var first = occ.Sentence.Cells[best.First];
                 var corner = slots[first.X, first.Y].transform.position + Vector3.down + Vector3.left * 0.5f;
-                label.Field.transform.position = (Vector2)cam.WorldToScreenPoint(corner);
-                ((RectTransform)label.Field.transform).sizeDelta = new Vector2(cell.x * (best.Last - best.First + 1), cell.y / 3f);
-                // AlienCharacter.UpdatePos scales the game's labels this way every frame; the
-                // prefab's own maximum does not follow the screen size.
-                label.Field.textComponent.fontSizeMax = 0.3f * cell.x;
-                label.Field.textComponent.textWrappingMode = TextWrappingModes.Normal;
+                ModFields.Place(label.Field, cam, corner, new Vector2(cell.x * (best.Last - best.First + 1), cell.y / 3f), cell);
                 // The bracket marks the run only while its translation is being edited.
                 SetLines(label, label == editing ? Bracket(label, best.First, cam) : Array.Empty<Vector3[]>());
             }
