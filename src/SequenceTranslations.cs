@@ -823,24 +823,33 @@ namespace CompoundTranslations
             var manager = Global.manager;
             var show = manager != null && Visible;
 
-            // A label being edited, or selected with its activation queued, keeps its run, so
-            // what is typed is saved under the run the player chose. If its run no longer
-            // matches, it stays on screen until its edit ends.
+            // A label keeps its run while that run still matches, so a change elsewhere, such as
+            // a run revealed on hover, rewrites no other label. A label being edited, or selected
+            // with its activation queued, keeps its run first, so what is typed is saved under the
+            // run the player chose. If its run no longer matches, it stays on screen until its
+            // edit ends.
             var kept = new Dictionary<Occurrence, Label>();
             var keptLabels = new HashSet<Label>();
-            foreach (var l in labels)
+            foreach (var inUse in new[] { true, false })
             {
-                if (l.Occ == null || l.Field == null || !(l == editing || ModFields.InUse(l.Field)))
+                foreach (var l in labels)
                 {
-                    continue;
+                    if (l.Occ == null || l.Field == null || (l == editing || ModFields.InUse(l.Field)) != inUse || !(show || inUse))
+                    {
+                        continue;
+                    }
+                    var occ = occurrences.Find(o => o.Same(l.Occ) && !kept.ContainsKey(o));
+                    if (occ != null)
+                    {
+                        l.Occ = occ;
+                        kept[occ] = l;
+                        keptLabels.Add(l);
+                    }
+                    else if (inUse)
+                    {
+                        keptLabels.Add(l);
+                    }
                 }
-                var occ = occurrences.Find(o => o.Same(l.Occ) && !kept.ContainsKey(o));
-                if (occ != null)
-                {
-                    l.Occ = occ;
-                    kept[occ] = l;
-                }
-                keptLabels.Add(l);
             }
             var free = new Queue<Label>();
             foreach (var l in labels)
@@ -859,6 +868,15 @@ namespace CompoundTranslations
                         label = free.Count > 0 ? free.Dequeue() : CreateLabel(manager);
                         label.Occ = occ;
                         label.Field.text = Translation(occ.Key);
+                    }
+                    else if (label != editing && !ModFields.InUse(label.Field))
+                    {
+                        // The translation may have changed, as by an undo.
+                        var t = Translation(occ.Key);
+                        if (label.Field.text != t)
+                        {
+                            label.Field.text = t;
+                        }
                     }
                     // The game recolors only its own labels when the color scheme changes.
                     label.Field.textComponent.color = CompoundHint.NormalColor();
