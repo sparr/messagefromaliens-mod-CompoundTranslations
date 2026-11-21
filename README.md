@@ -41,7 +41,7 @@ Here you can see one translated phrase that applies to a sequence of four glyphs
 
 A glyph can have a different translation for each place it takes in a compound of two different words. A glyph's information panel, shown by right-clicking it, gets a new line above the definitions when the glyph takes a place in a compound you have encountered, underlined like a menu link, which will open the positional translation interface and indicate if it's already filled out.
 
-The new interface allows specifying a translation for a glyph that will be used in a compound word partial translation if the sub glyph appears in a particular position. The panel shows only the positions the glyph takes in compounds you have encountered: compounds the game has drawn for you anywhere, and the compounds inside them. An empty field shows, dimmed, what hints use in its place: the glyph's translation, or, for an untranslated compound, its own hint in brackets. Tab moves through the fields along with the glyph labels.
+The new interface allows specifying a translation for a glyph that will be used in a compound word partial translation if the sub glyph appears in a particular position. The panel shows only the positions the glyph takes in compounds you have encountered: compounds the game has drawn for you anywhere, and the compounds inside them. An empty field shows, dimmed, what hints use in its place: the glyph's translation, or, for an untranslated compound, its own hint in brackets. Tab moves through the fields along with the glyph labels. With Interface Tweaks' keyboard shortcuts on, the fields follow its Tab order, one panel at a time, and Shift+Tab goes back through them.
 
 On a compound's information panel, the line that names its two parts labels each part with its translation for its place in that compound, when it has one, in place of its own translation. Editing that label edits the position translation. A part without one keeps its own label, and editing it edits its own translation.
 
@@ -106,7 +106,7 @@ For a game folder outside a Steam library, set `GameDir` to the game folder the 
 | `Draw.Write` (list overload) | Postfix: records which call drew each glyph and that call's row layout, so lines from separate calls stay separate sentences, spaces at a wrap are counted, and lists are left out. Finds the part glyphs of a compound's composition line in the left panel. |
 | `Draw.Write`, `Draw.ClearSelected` | Postfix: marks the glyph layout as changed, so runs are found again after the redraw, in the same frame. |
 | `Draw.ClearSelected` | Prefix: ends the edit of a run's label as a redraw starts, so it is saved under that run. |
-| `Draw.Update` | Prefix: Tab from a glyph label selects the next position field when one comes before the next label. |
+| `Draw.Update` | Prefix: Tab from a glyph label selects the next position field when one comes before the next label, or with Interface Tweaks' order, the previous one for Shift+Tab. |
 | `Draw.UpdateText1` | Prefix: rewrites the position translations button in the left panel's history, so every entry shows whether its glyph has position translations. |
 | `Draw.PushLeftText` | Prefix: adds the glyphs that open the position translations panel to a word's information text. |
 | `Draw.UpdateText` | Postfix: marks the left panel as changed, so the position translations panel is drawn again after the redraw, in the same frame. |

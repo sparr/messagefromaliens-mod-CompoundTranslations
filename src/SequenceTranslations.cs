@@ -364,7 +364,7 @@ namespace CompoundTranslations
         }
 
         // Tab from a run's label, which the game's Tab handler does not know, moves on to the
-        // next label or position field after the run (TabOrder).
+        // next label or position field after the run, or before it for a backward Tab (TabOrder).
         private static void TabFromLabel()
         {
             if (!TabOrder.Pressed(out var selected))
@@ -376,8 +376,9 @@ namespace CompoundTranslations
             {
                 return;
             }
-            var last = label.Occ.Sentence.Cells[label.Occ.End];
-            TabOrder.Select(TabOrder.Next(new Vector2Int(last.X, last.Y), false));
+            // Backward, the run's stop is its first glyph's, so the label before it comes next.
+            var end = label.Occ.Sentence.Cells[TabOrder.Backward() ? label.Occ.Start : label.Occ.End];
+            TabOrder.Select(TabOrder.Next(new Vector2Int(end.X, end.Y), false));
         }
 
         // Selecting another object from inside an onSelect handler is refused by the
