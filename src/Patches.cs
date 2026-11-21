@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using HarmonyLib;
+using TMPro;
+using UnityEngine.EventSystems;
 
 namespace CompoundTranslations
 {
@@ -25,7 +27,7 @@ namespace CompoundTranslations
     [HarmonyPatch(typeof(AlienCharacter), nameof(AlienCharacter.StartEdit))]
     internal static class StartEditPatch
     {
-        // Shift+click extends the selection into a run; clicking a glyph inside a run edits the run.
+        // A glyph inside a run selected by Tab or the arrow keys hands the selection to the run.
         private static bool Prefix(AlienCharacter __instance)
         {
             try
@@ -58,6 +60,24 @@ namespace CompoundTranslations
         }
     }
 
+    // Shift+click extends the selection into a run; clicking a glyph inside a run edits the run.
+    [HarmonyPatch(typeof(TMP_InputField), nameof(TMP_InputField.OnPointerDown))]
+    internal static class PointerDownPatch
+    {
+        private static bool Prefix(TMP_InputField __instance, PointerEventData eventData)
+        {
+            try
+            {
+                return SequenceTranslations.BeforePointerDown(__instance, eventData);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"OnPointerDown prefix failed: {e}");
+                return true;
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(AlienCharacter), nameof(AlienCharacter.LateUpdate))]
     internal static class LateUpdatePatch
     {
@@ -77,22 +97,17 @@ namespace CompoundTranslations
     [HarmonyPatch(typeof(AlienCharacter), nameof(AlienCharacter.EndEdit))]
     internal static class EndEditPatch
     {
-        // Skip the save when the edit was replaced by a run's edit, so the label text the
-        // field still holds is not written as a translation, or when it was a positional
-        // translation's edit, which is saved here instead.
+        // Skip the save when it was a positional translation's edit, which is saved here instead.
         private static bool Prefix(AlienCharacter __instance, string s, out bool __state)
         {
-            __state = SequenceTranslations.IsSuppressed(__instance);
-            if (!__state)
+            __state = false;
+            try
             {
-                try
-                {
-                    __state = RadicalPositions.EndEdit(__instance, s);
-                }
-                catch (Exception e)
-                {
-                    Plugin.Log.LogError($"EndEdit prefix failed: {e}");
-                }
+                __state = RadicalPositions.EndEdit(__instance, s);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"EndEdit prefix failed: {e}");
             }
             return !__state;
         }

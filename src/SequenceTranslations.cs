@@ -98,11 +98,8 @@ namespace CompoundTranslations
         private static readonly Dictionary<AlienCharacter, (Sentence Sentence, int Index)> cellOf = new Dictionary<AlienCharacter, (Sentence, int)>();
         private static readonly List<Occurrence> occurrences = new List<Occurrence>();
         private static Dictionary<AlienCharacter, Occurrence> covering = new Dictionary<AlienCharacter, Occurrence>();
+        private static readonly Dictionary<TMP_InputField, AlienCharacter> glyphOf = new Dictionary<TMP_InputField, AlienCharacter>();
         private static readonly List<Label> labels = new List<Label>();
-        private static readonly HashSet<AlienCharacter> suppressEndEdit = new HashSet<AlienCharacter>();
-        // Glyphs whose edit was replaced by a run's. The game never started editing them, so any
-        // end of edit they report, whenever Unity sends it, must not save their field's text.
-        private static readonly HashSet<AlienCharacter> replaced = new HashSet<AlienCharacter>();
 
         // The glyph grid changed since the last scan, so scan data is stale.
         private static bool dirty = true;
@@ -114,7 +111,10 @@ namespace CompoundTranslations
         // The cells of a run whose glyph the mouse is over, shown as individual labels.
         private static Occurrence revealed;
         private static Label editing;
-        private static Action deferred;
+        // A run whose label takes the selection in the next LateUpdate, from the glyph inside it
+        // that has it now.
+        private static Occurrence deferredRun;
+        private static AlienCharacter deferredFrom;
         private static bool loggedError;
 
         // The selection whose edit ended most recently, for extending it with shift+click.
@@ -139,11 +139,17 @@ namespace CompoundTranslations
         {
             try
             {
-                if (deferred != null)
+                if (deferredRun != null)
                 {
-                    var d = deferred;
-                    deferred = null;
-                    d();
+                    var occ = deferredRun;
+                    deferredRun = null;
+                    if (EventSystem.current?.currentSelectedGameObject == deferredFrom?.txt?.gameObject)
+                    {
+                        OpenRun(occ);
+                    }
+                    // Its label was spared from hiding while it was selected.
+                    deferredFrom?.UpdateEarthText();
+                    deferredFrom = null;
                 }
                 if (Plugin.Visible != lastVisible)
                 {
@@ -239,54 +245,96 @@ namespace CompoundTranslations
             }
         }
 
-        // StartEdit prefix. Returns false to replace the glyph's own edit with a run's.
-        internal static bool BeforeStartEdit(AlienCharacter ac)
-        {
-            var proceed = StartsOwnEdit(ac);
-            if (ac != null)
-            {
-                if (proceed)
-                {
-                    replaced.Remove(ac);
-                }
-                else
-                {
-                    replaced.Add(ac);
-                }
-            }
-            return proceed;
-        }
-
-        private static bool StartsOwnEdit(AlienCharacter ac)
+        // TMP_InputField.OnPointerDown prefix. A press on a glyph's label or a run's label that
+        // opens a run selects the run's label instead, before the pressed field is selected, and
+        // returns false. The pressed field is never selected or activated, so it never ends an
+        // edit either.
+        internal static bool BeforePointerDown(TMP_InputField field, PointerEventData e)
         {
             // While translations are hidden, no run labels are drawn to edit.
-            if (!Enabled || !Plugin.Visible || dirty || ac == null || !cellOf.TryGetValue(ac, out var at))
+            if (!Enabled || !Plugin.Visible || field == null || e == null || e.button != PointerEventData.InputButton.Left)
             {
                 return true;
             }
-            covering.TryGetValue(ac, out var cov);
-            // A selection that cannot be a run, as one across a space, is not made: the click
-            // edits the clicked glyph, or the run that covers it, and a new selection starts there.
-            if (ShiftClick && lastFrame == Time.frameCount && lastSentence == at.Sentence)
+            if (dirty)
             {
-                var start = Math.Min(lastStart, cov?.Start ?? at.Index);
-                var end = Math.Max(lastEnd, cov?.End ?? at.Index);
-                var occ = Creatable(at.Sentence, start, end);
-                if (occ != null)
-                {
-                    Defer(occ, ac, null);
-                    return false;
-                }
+                Refresh();
             }
-            if (cov != null)
+            var occ = RunFor(field);
+            if (occ == null)
             {
-                Defer(cov, ac, null);
-                return false;
+                return true;
             }
-            return true;
+            // The click that follows the press would activate the pressed field.
+            e.eligibleForClick = false;
+            OpenRun(occ);
+            return false;
         }
 
-        internal static bool IsSuppressed(AlienCharacter ac) => ac != null && (suppressEndEdit.Contains(ac) || replaced.Contains(ac));
+        // The run a press on the field edits in place of the field's own: for a shift+click, the
+        // selection whose edit just ended extended to the field's glyph or run, when that can be
+        // a run; otherwise, for a glyph's label, the run that covers the glyph. A selection that
+        // cannot be a run, as one across a space, is not made: the press edits the pressed glyph,
+        // or the run that covers it, and a new selection starts there.
+        private static Occurrence RunFor(TMP_InputField field)
+        {
+            var label = labels.Find(l => l.Field == field && l.Occ != null);
+            Occurrence cov = null;
+            Sentence s;
+            int index;
+            if (label != null)
+            {
+                s = label.Occ.Sentence;
+                index = label.Occ.Start;
+                cov = label.Occ;
+            }
+            else if (glyphOf.TryGetValue(field, out var ac) && cellOf.TryGetValue(ac, out var at))
+            {
+                s = at.Sentence;
+                index = at.Index;
+                covering.TryGetValue(ac, out cov);
+            }
+            else
+            {
+                return null;
+            }
+            if (ShiftClick && lastFrame == Time.frameCount && lastSentence == s)
+            {
+                var extended = Creatable(s, Math.Min(lastStart, cov?.Start ?? index), Math.Max(lastEnd, cov?.End ?? index));
+                if (extended != null && !extended.Same(label?.Occ))
+                {
+                    return extended;
+                }
+            }
+            return label == null ? cov : null;
+        }
+
+        // StartEdit prefix. A glyph inside a run that is selected by Tab or the arrow keys hands
+        // the selection to the run's label. Its own label is not activated, so it never ends an
+        // edit. Returns false to skip the game's start of an edit.
+        internal static bool BeforeStartEdit(AlienCharacter ac)
+        {
+            if (ac?.txt == null)
+            {
+                return true;
+            }
+            if (Enabled && Plugin.Visible && dirty)
+            {
+                Refresh();
+            }
+            var cov = Enabled && Plugin.Visible && covering.TryGetValue(ac, out var c) ? c : null;
+            // TMP_InputField.OnSelect reads this after its onSelect listeners, StartEdit among
+            // them, have run.
+            ac.txt.shouldActivateOnSelect = cov == null;
+            if (cov == null)
+            {
+                return true;
+            }
+            // Selecting another object from inside onSelect is refused by the EventSystem.
+            deferredRun = cov;
+            deferredFrom = ac;
+            return false;
+        }
 
         // EndEdit postfix for a glyph's own label.
         internal static void AfterGlyphEndEdit(AlienCharacter ac)
@@ -352,80 +400,19 @@ namespace CompoundTranslations
             TabOrder.Select(TabOrder.Next(new Vector2Int(end.X, end.Y), false));
         }
 
-        // Selecting another object from inside an onSelect handler is refused by the
-        // EventSystem, so the switch to the run's label happens in the next LateUpdate.
-        // fromGlyph or fromLabel is the field that was just selected and is being replaced.
-        private static void Defer(Occurrence occ, AlienCharacter fromGlyph, Label fromLabel)
+        // Makes the run the one being edited and selects its label, which activates it.
+        private static void OpenRun(Occurrence occ)
         {
-            deferred = () =>
+            pending = occ;
+            Refresh();
+            var target = labels.Find(l => l.Occ != null && l.Occ.Same(pending) && l.Field.gameObject.activeSelf);
+            if (target == null)
             {
-                // A run's label still holds its saved translation, so ending its edit first
-                // changes nothing, and frees the label for reuse.
-                if (fromLabel?.Field != null && EventSystem.current?.currentSelectedGameObject == fromLabel.Field.gameObject)
-                {
-                    EventSystem.current.SetSelectedGameObject(null);
-                }
-                pending = occ;
-                Refresh();
-                Label target = null;
-                foreach (var l in labels)
-                {
-                    if (l.Occ != null && l.Occ.Same(pending) && l.Field.gameObject.activeSelf)
-                    {
-                        target = l;
-                        break;
-                    }
-                }
-                // The clicked label takes the selection back later this frame, when
-                // TMP_InputField.LateUpdate finishes the activation the click started. Refresh
-                // may have given it another run, so give it the new run instead.
-                if (target != null && fromLabel?.Field != null && target != fromLabel)
-                {
-                    SwapRuns(target, fromLabel);
-                    target = fromLabel;
-                }
-                if (fromGlyph != null)
-                {
-                    suppressEndEdit.Add(fromGlyph);
-                }
-                try
-                {
-                    EventSystem.current?.SetSelectedGameObject(target?.Field.gameObject);
-                }
-                finally
-                {
-                    if (fromGlyph != null)
-                    {
-                        suppressEndEdit.Remove(fromGlyph);
-                    }
-                }
-                if (target == null)
-                {
-                    pending = null;
-                    needsRender = true;
-                }
-                fromGlyph?.UpdateEarthText();
-            };
-        }
-
-        // Exchanges which runs two labels show. Positions follow in PositionLabels.
-        private static void SwapRuns(Label a, Label b)
-        {
-            (a.Occ, b.Occ) = (b.Occ, a.Occ);
-            var text = a.Field.text;
-            a.Field.text = b.Field.text;
-            b.Field.text = text;
-            var active = a.Field.gameObject.activeSelf;
-            a.Field.gameObject.SetActive(b.Field.gameObject.activeSelf);
-            b.Field.gameObject.SetActive(active);
-            if (a.Occ == null)
-            {
-                SetLines(a, Array.Empty<Vector3[]>());
+                pending = null;
+                needsRender = true;
+                return;
             }
-            if (b.Occ == null)
-            {
-                SetLines(b, Array.Empty<Vector3[]>());
-            }
+            EventSystem.current?.SetSelectedGameObject(target.Field.gameObject);
         }
 
         private static string Translation(string key) => SavedValues.Get(key) ?? "";
@@ -538,6 +525,7 @@ namespace CompoundTranslations
         {
             sentences.Clear();
             cellOf.Clear();
+            glyphOf.Clear();
             var slots = Global.manager?.alien_slots;
             if (slots == null)
             {
@@ -570,6 +558,10 @@ namespace CompoundTranslations
                     // A settings page's option glyph keeps its cell but never joins a run.
                     var eligible = ac.sp != null && ac.sp.enabled && ac.showtxt && ac.txt != null && !string.IsNullOrEmpty(ac.alien_txt) && !(isOption?.Invoke(ac) ?? false);
                     cellOf[ac] = (s, s.Cells.Count);
+                    if (ac.txt != null)
+                    {
+                        glyphOf[ac.txt] = ac;
+                    }
                     s.Cells.Add(new Cell { Ac = ac, Token = eligible ? ac.alien_txt : null, X = x, Y = y, LineX = p.LineX, LineY = p.LineY });
                 }
             }
@@ -941,16 +933,6 @@ namespace CompoundTranslations
             editing = label;
             label.Field.text = Translation(label.Occ.Key);
             label.Field.textComponent.color = CompoundHint.NormalColor();
-            // Shift+click on a run's label extends the selection that was just being edited.
-            var occ = label.Occ;
-            if (ShiftClick && lastFrame == Time.frameCount && lastSentence == occ.Sentence)
-            {
-                var extended = Creatable(occ.Sentence, Math.Min(lastStart, occ.Start), Math.Max(lastEnd, occ.End));
-                if (extended != null && !extended.Same(occ))
-                {
-                    Defer(extended, null, label);
-                }
-            }
         }
 
         private static void OnLabelEndEdit(Label label, string s)
