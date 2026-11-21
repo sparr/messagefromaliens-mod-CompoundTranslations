@@ -237,6 +237,34 @@ namespace CompoundTranslations
 
         private static string Key(string slot, string word) => KeyPrefix + slot + ":" + word;
 
+        // Saves the word's translation for the slot, or removes it when blank, and redraws what
+        // shows it.
+        internal static void Save(string word, string slot, string s)
+        {
+            var dict = Global.savedata?.dict;
+            if (dict == null)
+            {
+                return;
+            }
+            var key = Key(slot, word);
+            var t = SequenceTranslations.IsBlank(s) ? "" : s.Trim();
+            var had = dict.TryGetValue(key, out var old);
+            if (t == "" ? had : old != t)
+            {
+                if (t == "")
+                {
+                    dict.Remove(key);
+                }
+                else
+                {
+                    dict[key] = t;
+                }
+                Global.SaveGame();
+                CompoundHint.RefreshVisible(null);
+                RefreshHistory();
+            }
+        }
+
         // What the buttons in the left panel's history were last worked out for.
         private static bool lastVisible = true;
         private static int lastWins = -1;
@@ -475,27 +503,7 @@ namespace CompoundTranslations
                 {
                     return;
                 }
-                var dict = Global.savedata?.dict;
-                if (dict != null)
-                {
-                    var key = Key(f.Variant.Slot, f.Word);
-                    var t = SequenceTranslations.IsBlank(s) ? "" : s.Trim();
-                    var had = dict.TryGetValue(key, out var old);
-                    if (t == "" ? had : old != t)
-                    {
-                        if (t == "")
-                        {
-                            dict.Remove(key);
-                        }
-                        else
-                        {
-                            dict[key] = t;
-                        }
-                        Global.SaveGame();
-                        CompoundHint.RefreshVisible(null);
-                        RefreshHistory();
-                    }
-                }
+                Save(f.Word, f.Variant.Slot, s);
                 ShowValue(f);
             }
             catch (Exception e)
