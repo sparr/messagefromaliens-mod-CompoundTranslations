@@ -84,7 +84,7 @@ BepInEx trims whitespace from setting values, so `Separator` and `Brackets` are 
 dotnet build -c Release
 ```
 
-The build copies `CompoundTranslations.dll` to `<game>/BepInEx/plugins/CompoundTranslations/`. Disable the copy with `-p:DeployToGame=false`.
+With `-p:DeployToGame=true`, the build also copies `CompoundTranslations.dll` to `<game>/BepInEx/plugins/CompoundTranslations/`.
 
 The build looks for the game in `<SteamLibraryDir>/steamapps/common/Message From Aliens`. `SteamLibraryDir` comes from the first of these that is set:
 
