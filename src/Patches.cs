@@ -13,6 +13,7 @@ namespace CompoundTranslations
             try
             {
                 CompoundHint.Apply(__instance);
+                RadicalPositions.Apply(__instance);
                 SequenceTranslations.AfterUpdateEarthText(__instance);
             }
             catch (Exception e)
@@ -39,12 +40,37 @@ namespace CompoundTranslations
             }
         }
 
-        // StartEdit clears the label for untranslated words; type in the normal color.
-        private static void Postfix(AlienCharacter __instance)
+        // StartEdit clears the label for untranslated words; type in the normal color. A part
+        // glyph in a composition line edits its positional translation, if it has one.
+        private static void Postfix(AlienCharacter __instance, bool __runOriginal)
         {
             if (__instance?.txt != null)
             {
                 __instance.txt.textComponent.color = CompoundHint.NormalColor();
+            }
+            try
+            {
+                RadicalPositions.AfterStartEdit(__instance, __runOriginal);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"StartEdit postfix failed: {e}");
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(AlienCharacter), nameof(AlienCharacter.LateUpdate))]
+    internal static class LateUpdatePatch
+    {
+        private static void Prefix(AlienCharacter __instance)
+        {
+            try
+            {
+                RadicalPositions.BeforeLateUpdate(__instance);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"LateUpdate prefix failed: {e}");
             }
         }
     }
@@ -53,10 +79,22 @@ namespace CompoundTranslations
     internal static class EndEditPatch
     {
         // Skip the save when the edit was replaced by a run's edit, so the label text the
-        // field still holds is not written as a translation.
-        private static bool Prefix(AlienCharacter __instance, out bool __state)
+        // field still holds is not written as a translation, or when it was a positional
+        // translation's edit, which is saved here instead.
+        private static bool Prefix(AlienCharacter __instance, string s, out bool __state)
         {
             __state = SequenceTranslations.IsSuppressed(__instance);
+            if (!__state)
+            {
+                try
+                {
+                    __state = RadicalPositions.EndEdit(__instance, s);
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.LogError($"EndEdit prefix failed: {e}");
+                }
+            }
             return !__state;
         }
 
@@ -110,6 +148,7 @@ namespace CompoundTranslations
             try
             {
                 SequenceTranslations.AfterWrite(__instance, s, maxx, xx, yy, isLeft, sec, nospacing, __result);
+                RadicalPositions.AfterWrite(sec, __result);
             }
             catch (Exception e)
             {
