@@ -79,6 +79,8 @@ BepInEx trims whitespace from setting values, so `Separator` and `Brackets` are 
 
 - BepInEx 5.4.23.6 or later, `BepInEx_win_x64` build, unzipped into the game folder. Tested with Unity 6000.6.8f1.
 - On Linux under Proton, set the Steam launch options to `WINEDLLOVERRIDES="winhttp=n,b" %command%`.
+- Optional: [Mod Settings](https://github.com/sparr/messagefromaliens-mod-ModSettings) 0.2.0 or later, to change settings in the game. Mod Settings' choice glyphs are kept from forming runs.
+- Optional: [Interface Tweaks](https://github.com/sparr/messagefromaliens-mod-InterfaceTweaks) 0.3.0 or later, for its Tab order through position fields and run labels.
 - .NET SDK 8 or later to build.
 
 ## Building
