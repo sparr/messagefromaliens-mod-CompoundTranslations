@@ -21,7 +21,7 @@ The hint is display-only. Clicking the label to edit it starts from an empty fie
 
 ![Screenshot as described](screenshot_compound.png)
 
-Here you can see that the `L`, `seesaw`, and `| |` glyphs have been "translated" by the player. The mod is assembling those into compound translations where possible.
+Here the player has given simple glyphs made-up names, such as `L`, `H`, `C`, `seesaw`, and `clog`. The mod assembles those into hints for the compounds built from them, such as `(L - H) - (C - seesaw)`, nesting where a part is itself a compound.
 
 ## Sequence translations
 
@@ -37,7 +37,7 @@ Run translations are saved in your save slot alongside the game's own translatio
 
 ![Screenshot as described](screenshot_sequence.png)
 
-Here you can see one translated phrase that applies to a sequence of four glyphs.
+Here one translated phrase, `my run`, applies to a sequence of three glyphs.
 
 ## Position translations
 
@@ -49,11 +49,9 @@ On a compound's information panel, the line that names its two parts labels each
 
 Position translations are saved in your save slot alongside the game's own translations, as entries whose names start with `compoundtranslations.position:`. The game ignores them. They stay in the save if the mod is removed.
 
-<details>
-  <summary>SPOILER WARNING: Screenshot of positional translations reveals some alternate meanings of a common early game glyph</summary>
-  
-  ![Screenshot as described](screenshot_positional.png)
-</details>
+![Screenshot as described](screenshot_positional.png)
+
+Here the glyph named `square` takes all six places in compounds the player has encountered. Four have position translations, such as `lid` for its place on top and `frame` for its place around another glyph. The two empty fields show, dimmed, the glyph's own translation, which hints use there instead. The title row's hint `frame - [8]` uses one of them.
 
 ## Configuration
 
