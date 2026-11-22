@@ -1,7 +1,5 @@
 using System;
-using System.Collections;
 using System.Reflection;
-using HarmonyLib;
 
 namespace CompoundTranslations
 {
@@ -10,18 +8,16 @@ namespace CompoundTranslations
     //
     // On the game's settings page these are the glyphs Draw.Update's click handler acts on, other
     // than the reset line, whose whole line is one button. On Mod Settings' pages they are the
-    // glyphs in ModSettings.SettingsPages.choices while the page they were laid out for is open,
-    // the same test its own click handler makes.
+    // glyphs its public ModSettings.Api.IsChoiceGlyph accepts.
     internal static class SettingOptions
     {
         private const string GamePage = "modify game";
 
         private static bool resolved;
-        private static IList modChoices;
-        private static FieldInfo choiceGlyph;
-        private static FieldInfo modShown;
-        private static MethodInfo modOpenPage;
+        private static Func<AlienCharacter, bool> modIsChoice;
 
+        // Looked up once, when first needed, after every plugin has loaded. Without Mod Settings,
+        // or with a version older than its Api class, its pages' options are not kept out of runs.
         private static void Resolve()
         {
             if (resolved)
@@ -31,29 +27,15 @@ namespace CompoundTranslations
             resolved = true;
             // AccessTools.TypeByName logs a warning when the type is missing, as it is whenever
             // Mod Settings is not installed.
-            Type type = null;
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {
-                type = asm.GetType("ModSettings.SettingsPages", false);
-                if (type != null)
+                var type = asm.GetType("ModSettings.Api", false);
+                var method = type?.GetMethod("IsChoiceGlyph", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(AlienCharacter) }, null);
+                if (method != null && method.ReturnType == typeof(bool))
                 {
-                    break;
+                    modIsChoice = (Func<AlienCharacter, bool>)Delegate.CreateDelegate(typeof(Func<AlienCharacter, bool>), method);
+                    return;
                 }
-            }
-            if (type == null)
-            {
-                return;
-            }
-            var choices = AccessTools.Field(type, "choices");
-            var choice = AccessTools.Inner(type, "Choice");
-            choiceGlyph = choice == null ? null : AccessTools.Field(choice, "Glyph");
-            modShown = AccessTools.Field(type, "shown");
-            modOpenPage = AccessTools.Method(type, "OpenPage", new[] { typeof(Draw) });
-            modChoices = choices?.GetValue(null) as IList;
-            if (modChoices == null || choiceGlyph == null || modShown == null || modOpenPage == null)
-            {
-                modChoices = null;
-                Plugin.Log.LogWarning("Mod Settings' choice glyphs were not found; its option glyphs may form runs.");
             }
         }
 
@@ -69,24 +51,7 @@ namespace CompoundTranslations
                 return IsGameOption;
             }
             Resolve();
-            if (modChoices == null || modChoices.Count == 0)
-            {
-                return null;
-            }
-            var shown = modShown.GetValue(null);
-            if (shown == null || !ReferenceEquals(shown, modOpenPage.Invoke(null, new object[] { draw })))
-            {
-                return null;
-            }
-            var glyphs = new System.Collections.Generic.HashSet<AlienCharacter>();
-            foreach (var c in modChoices)
-            {
-                if (choiceGlyph.GetValue(c) is AlienCharacter ac)
-                {
-                    glyphs.Add(ac);
-                }
-            }
-            return ac => ac.sector == "righttextdown" && glyphs.Contains(ac);
+            return modIsChoice;
         }
 
         // Draw.Update's click and cursor tests for the settings page, without the reset line.
