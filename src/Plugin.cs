@@ -46,6 +46,7 @@ namespace CompoundTranslations
         internal static ConfigEntry<int> Depth;
         internal static ConfigEntry<bool> MarkHidden;
         internal static ConfigEntry<bool> OmitOuterBrackets;
+        internal static ConfigEntry<bool> ShowWordType;
         internal static ConfigEntry<bool> Sequences;
         internal static ConfigEntry<bool> RevealOnHover;
         internal static ConfigEntry<bool> Positions;
@@ -58,8 +59,8 @@ namespace CompoundTranslations
             Separator = Config.Bind("Display", "Separator", new QuotedString(" - "),
                 Described("Text placed between the two parts of a compound word. Surrounding double quotes are removed, so spaces inside them are kept.",
                     "symbol between radicial", quoted: true));
-            Brackets = Config.Bind("Display", "Brackets", new QuotedString("()"),
-                Described("Opening and closing brackets around each compound, as one string split in half, e.g. \"()\", \"[]\", or \"<<>>\". \"\" for none.",
+            Brackets = Config.Bind("Display", "Brackets", new QuotedString("[]"),
+                Described("Opening and closing brackets around each compound, as one string split in half, e.g. \"[]\", \"()\", or \"<<>>\". \"\" for none.",
                     "radicial de edge", quoted: true));
             OmitOuterBrackets = Config.Bind("Display", "OmitOuterBrackets", true,
                 Described("Leave out the brackets around the whole label, keeping them around nested compounds.", "tohide word de edge"));
@@ -70,6 +71,10 @@ namespace CompoundTranslations
             MarkHidden = Config.Bind("Display", "MarkHidden", true,
                 Described("Show ?+ instead of ? for an untranslated word, or the whole label, when it has translated parts that are not shown, such as parts beyond the Depth limit.",
                     "mark tohide de radicial"));
+
+            ShowWordType = Config.Bind("Display", "ShowWordType", true,
+                Described("Append the compound's word type in parentheses, as shown on its information panel, to a hint when the type has a translation.",
+                    "see noun verb adj"));
 
             Sequences = Config.Bind("Sequences", "Enabled", true,
                 Described("Allow translations of runs of glyphs: while editing a label, shift+click another label in the same sentence.",

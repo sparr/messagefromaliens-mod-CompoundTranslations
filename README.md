@@ -11,11 +11,11 @@ Install BepInEx first, if you haven't already, as described under [Requirements]
 A word is a compound when its two components are both other words, or when it is one other word repeated two, three, or four times. When a compound has no translation, its English label changes from `?` to `<part 1> - <part 2>`, or `<n>x <part>` for a repeat (such as `3x small`). A word whose two components are the same word side by side or stacked also counts as a repeat. Each part is:
 
 - the part's translation, if it has one;
-- otherwise, if the part is itself a compound, its own hint in brackets, e.g. `(<part 1a> - <part 1b>) - <part 2>`;
+- otherwise, if the part is itself a compound, its own hint in brackets, e.g. `[<part 1a> - <part 1b>] - <part 2>`;
 - otherwise `?+` if the part has translated parts that are not shown, such as parts beyond the `Depth` limit;
 - otherwise `?`.
 
-A hint is shown only if at least one translated word appears in it. Otherwise the label stays `?`, or becomes `?+` if the word has translated parts at any depth. The label is drawn in the dimmed color the game uses for finished chapters (`Draw.DefaultColor(3)`).
+If the word type that the compound's information panel names has a translation, the hint ends with it in parentheses, e.g. `<part 1> - <part 2> (<type>)`. A hint is shown only if at least one translated word appears in it. Otherwise the label stays `?`, or becomes `?+` if the word has translated parts at any depth. The label is drawn in the dimmed color the game uses for finished chapters (`Draw.DefaultColor(3)`).
 
 The hint is display-only. Clicking the label to edit it starts from an empty field as usual, and the hint is never saved as a translation. Translating a word, or changing a setting at runtime, refreshes the visible hints.
 
@@ -62,10 +62,11 @@ Position translations are saved in your save slot alongside the game's own trans
 | Key | Default | Effect |
 |---|---|---|
 | `Display.Separator` | `" - "` | Text between the two parts. |
-| `Display.Brackets` | `"()"` | Opening and closing brackets around each compound, as one string split in half, e.g. `"[]"` or `"<<>>"`. `""` for none. |
+| `Display.Brackets` | `"[]"` | Opening and closing brackets around each compound, as one string split in half, e.g. `"()"` or `"<<>>"`. `""` for none. |
 | `Display.OmitOuterBrackets` | `true` | Leave out the brackets around the whole label, keeping them around nested compounds. |
 | `Display.Depth` | `-1` | Layers of compounds to expand. `-1` expands all layers, `0` disables hints, `1` shows only the translations of a word's direct parts. |
 | `Display.MarkHidden` | `true` | Show `?+` instead of `?` when the word has translated parts that are not shown. |
+| `Display.ShowWordType` | `true` | Append the compound's word type in parentheses to a hint when the type has a translation. |
 | `Sequences.Enabled` | `true` | Show and allow sequence translations. |
 | `Sequences.RevealOnHover` | `true` | While the mouse is over a glyph inside a run, show the glyphs' own labels instead of the run's translation. |
 | `Positions.Enabled` | `true` | Show the glyphs that open the position translations panel, and use position translations in hints. |

@@ -53,8 +53,33 @@ namespace CompoundTranslations
             var ctx = NewContext();
             var depth = Plugin.Depth.Value;
             var hint = depth == 0 ? null : Build(word, depth, ctx, !Plugin.OmitOuterBrackets.Value);
-            return hint ?? (ctx.MarkHidden && HasTranslatedPart(word, ctx) ? UnknownWithHidden : null);
+            if (hint != null)
+            {
+                return hint + WordTypeSuffix(word);
+            }
+            return ctx.MarkHidden && HasTranslatedPart(word, ctx) ? UnknownWithHidden : null;
         }
+
+        // " (<type>)" for each of the word's types that has a translation, when ShowWordType is on.
+        private static string WordTypeSuffix(string word)
+        {
+            if (!Plugin.ShowWordType.Value || !Global.alien_text.TryGetValue(word, out var info) || info.wordtype == null)
+            {
+                return "";
+            }
+            var suffix = "";
+            foreach (var type in info.wordtype)
+            {
+                if (IsTranslated(type))
+                {
+                    suffix += " (" + Global.savedata.dict[type].Trim() + ")";
+                }
+            }
+            return suffix;
+        }
+
+        private static bool HasWordType(string word, string type) =>
+            Global.alien_text.TryGetValue(word, out var info) && info.wordtype != null && info.wordtype.Contains(type);
 
         // What a hint shows for the word as a part of a compound's hint, when the word has no
         // translation for its position there: its translation, its bracketed nested hint, or
@@ -254,7 +279,8 @@ namespace CompoundTranslations
         }
 
         // Re-render visible labels of untranslated compounds that contain the changed word at
-        // any depth, since their hints may show it, or of all of them when changed is null. The
+        // any depth or have it as a word type, since their hints may show it, or of all of them
+        // when changed is null. The
         // game itself refreshes the labels of the changed word, as of except, the label edited.
         internal static void RefreshVisible(string changed, AlienCharacter except = null)
         {
@@ -269,7 +295,7 @@ namespace CompoundTranslations
             {
                 if (ac != null && ac != except && ac.showtxt && ac.gameObject.activeInHierarchy
                     && GetStructure(ac.alien_txt) != null && !IsTranslated(ac.alien_txt)
-                    && (changed == null || Contains(ac.alien_txt, changed, canonical, contains)))
+                    && (changed == null || Contains(ac.alien_txt, changed, canonical, contains) || HasWordType(ac.alien_txt, changed)))
                 {
                     ac.UpdateEarthText();
                 }
