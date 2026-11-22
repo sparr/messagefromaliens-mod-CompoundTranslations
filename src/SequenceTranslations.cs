@@ -374,12 +374,12 @@ namespace CompoundTranslations
             return new Occurrence { Sentence = s, Start = start, End = end, Key = KeyPrefix + string.Join(" ", tokens) };
         }
 
-        // A new run, unless Match would never show it there, as right after a conjunction whose
-        // neighbors share a word type: it would be saved and vanish at once.
+        // A new run, unless Match would never show it there, as where a word in it belongs to
+        // both sides of a conjunction (SharesWord): it would be saved and vanish at once.
         private static Occurrence Creatable(Sentence s, int start, int end)
         {
             var occ = MakeOccurrence(s, start, end);
-            return occ != null && !SharesHead(s, occ.Start) ? occ : null;
+            return occ != null && !SharesWord(s, occ.Start, occ.End) ? occ : null;
         }
 
         // Tab from a run's label, which the game's Tab handler does not know, moves on to the
@@ -682,7 +682,7 @@ namespace CompoundTranslations
                     for (var i = 0; i < s.Cells.Count; i++)
                     {
                         var t = s.Cells[i].Token;
-                        if (taken[i] || t == null || t == Gap || !runs.TryGetValue(t, out var candidates) || SharesHead(s, i))
+                        if (taken[i] || t == null || t == Gap || !runs.TryGetValue(t, out var candidates))
                         {
                             continue;
                         }
@@ -697,7 +697,7 @@ namespace CompoundTranslations
                             {
                                 ok = !taken[i + j] && s.Cells[i + j].Token == run[j];
                             }
-                            if (ok)
+                            if (ok && !SharesWord(s, i, i + run.Length - 1))
                             {
                                 var occ = new Occurrence { Sentence = s, Start = i, End = i + run.Length - 1, Key = KeyPrefix + string.Join(" ", run) };
                                 Add(occ, taken, newCovering);
@@ -723,42 +723,121 @@ namespace CompoundTranslations
             }
         }
 
-        // In "up and down face", "face" belongs to "up" too, so a run "down face" there would
-        // be wrong. A run is not matched right after a glyph translated as "and" or "or" when
-        // the glyph before that shares a word type with the run's first glyph. "to" joins the
-        // same way only between two numbers, as in "1 to 2 year": between nouns it names a
-        // place or a recipient, and the noun after it is its own.
-        private static bool SharesHead(Sentence s, int i)
+        // Whether a word of the run from start to end also belongs to words outside it, across a
+        // conjunction, so that showing the run there would be wrong. In "up and down face",
+        // "face" belongs to "up" too, so a run "down face" is wrong there. In "change into or
+        // outof", "change" belongs to "outof" too, so a run "change into" is wrong there, and in
+        // "by see . read or learn", "by" belongs to the whole list, so a run "by see" is wrong.
+        //
+        // The glyphs on either side of a glyph translated as "and" or "or" are coordinated when
+        // they share a word type. "to" coordinates only two numbers, as in "1 to 2 year":
+        // between nouns it names a place or a recipient. Before the run's first glyph, only the
+        // conjunction counts: a word shared after a list sits by its last item. After the run's
+        // last glyph, a list of single glyphs separated by spaces and ending in "and" or "or"
+        // counts too, when all its items share a word type with that glyph (ListType). Spaces
+        // also separate clauses, and those rarely end at one glyph of the same type.
+        private static bool SharesWord(Sentence s, int start, int end)
         {
-            if (i < 2)
+            var cells = s.Cells;
+            if (start >= 2 && start < end && Joins(cells[start - 1].Token) is string j1
+                && Coordinated(cells[start - 2].Token, cells[start].Token, j1) is HashSet<string> t1
+                && !Parallel(t1, cells[start + 1].Token, true))
+            {
+                return true;
+            }
+            if (end <= start)
             {
                 return false;
             }
-            var conj = s.Cells[i - 1].Token;
-            var before = s.Cells[i - 2].Token;
-            var first = s.Cells[i].Token;
-            if (conj == null || conj == Gap || before == null || before == Gap)
+            var t2 = end + 2 < cells.Count && Joins(cells[end + 1].Token) is string j2
+                ? Coordinated(cells[end].Token, cells[end + 2].Token, j2)
+                : ListType(s, end);
+            return t2 != null && !Parallel(t2, cells[end - 1].Token, false);
+        }
+
+        // Where the coordinated glyphs' run neighbor w shows the coordination joins whole
+        // phrases, each with its own words, rather than single words that share w:
+        // - Nouns or adjectives beside a word of their own type, as in "metal planet and water
+        //   planet" or "no hot and no cold".
+        // - Nouns beside a noun or number, as in chemical formulas: "Na Cl and H 2 O".
+        // - Numbers after a noun or number, as in "C O 2 and 2 H" or a number's own earlier
+        //   digits. Numbers before a noun share it, as in "1 to 2 year".
+        // after says w follows the coordinated glyph; otherwise it precedes it.
+        private static bool Parallel(HashSet<string> shared, string w, bool after)
+        {
+            var types = Types(w);
+            if (types == null)
             {
                 return false;
             }
-            var joins = Joins(conj);
-            if (joins == null)
+            var nounOrNum = types.Contains("noun") || types.Contains("num");
+            return ((shared.Contains("noun") || shared.Contains("adj")) && types.Overlaps(shared))
+                || (shared.Contains("noun") && nounOrNum)
+                || (shared.Contains("num") && !after && nounOrNum);
+        }
+
+        // The word types glyphs a and b, joined by a conjunction that Joins named joins, share as
+        // coordinated words, or null.
+        private static HashSet<string> Coordinated(string a, string b, string joins)
+        {
+            var shared = Types(a);
+            var other = Types(b);
+            if (shared == null || other == null)
             {
-                return false;
+                return null;
             }
-            var words = Global.alien_text;
-            if (words == null || !words.TryGetValue(before, out var a) || !words.TryGetValue(first, out var b) || a.wordtype == null || b.wordtype == null)
+            shared.IntersectWith(other);
+            if (joins == "to")
             {
-                return false;
+                shared.IntersectWith(new[] { "num" });
             }
-            foreach (var type in a.wordtype)
+            return shared.Count > 0 ? shared : null;
+        }
+
+        // The word types shared by the glyph at end and a list after it: spaces, each followed by
+        // one glyph, and then "and" or "or" and the last item's first glyph. Null if there is no
+        // such list or its items share no type.
+        private static HashSet<string> ListType(Sentence s, int end)
+        {
+            var cells = s.Cells;
+            var shared = Types(cells[end].Token);
+            var k = end + 1;
+            while (shared != null && shared.Count > 0 && k < cells.Count && cells[k].Token == Gap)
             {
-                if (b.wordtype.Contains(type) && (joins != "to" || type == "num"))
+                while (k < cells.Count && cells[k].Token == Gap)
                 {
-                    return true;
+                    k++;
+                }
+                if (k + 2 >= cells.Count || Types(cells[k].Token) is not HashSet<string> item)
+                {
+                    return null;
+                }
+                shared.IntersectWith(item);
+                k++;
+                var joins = Joins(cells[k].Token);
+                if (joins == "and" || joins == "or")
+                {
+                    var last = Types(cells[k + 1].Token);
+                    if (last == null)
+                    {
+                        return null;
+                    }
+                    shared.IntersectWith(last);
+                    return shared.Count > 0 ? shared : null;
                 }
             }
-            return false;
+            return null;
+        }
+
+        // A new set of the glyph's word types, or null for a gap, a cell outside runs, or a glyph
+        // without types.
+        private static HashSet<string> Types(string glyph)
+        {
+            if (glyph == null || glyph == Gap || Global.alien_text == null || !Global.alien_text.TryGetValue(glyph, out var w) || w.wordtype == null)
+            {
+                return null;
+            }
+            return new HashSet<string>(w.wordtype);
         }
 
         // "and", "or", or "to" if the glyph's translation is that word or lists it among
@@ -769,7 +848,7 @@ namespace CompoundTranslations
 
         internal static string Joins(string glyph)
         {
-            if (!CompoundHint.IsTranslated(glyph))
+            if (glyph == null || glyph == Gap || !CompoundHint.IsTranslated(glyph))
             {
                 return null;
             }
