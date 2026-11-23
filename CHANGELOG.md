@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## [0.4.0](https://github.com/sparr/messagefromaliens-mod-CompoundTranslations/releases/tag/v0.4.0) - 2026-11-22
+## [0.4.0](https://github.com/sparr/messagefromaliens-mod-CompoundTranslations/releases/tag/v0.4.0) - 2026-11-23
 
 - A compound's parts can be labeled and edited by their position translations, and hints include the compound's word type.
 - Brackets default to `[]`.
