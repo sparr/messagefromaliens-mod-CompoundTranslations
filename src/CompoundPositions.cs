@@ -2,22 +2,16 @@ using System.Collections.Generic;
 
 namespace CompoundTranslations
 {
-    // The positions each word takes in two-part compounds the player has encountered.
-    //
-    // A word is encountered once the game has drawn its glyph: AlienCharacter.UpdateEarthText
-    // adds every drawn word to Global.savedata.dict, as "?" until it is translated, wherever it
-    // is drawn, in pages, menus, definitions, quiz supplies, and the dictionary. The parts of an
-    // encountered compound, at any depth, are encountered too, since they are drawn inside it.
-    // For each position, the modifier strings of those compounds are counted, so the panel can
-    // draw the position the way the player has usually seen it.
-    internal static class EncounteredPositions
+    // The positions each word takes in the game's two-part compounds, whether or not the player
+    // has seen them. For each position, the modifier strings of those compounds are counted, so
+    // the panel can draw the position the way the game usually draws it.
+    internal static class CompoundPositions
     {
-        // The dictionary the table was built from, and how many keys it had: drawing a new word
-        // adds one.
-        private static Dictionary<string, string> builtFrom;
-        private static int builtKeys = -1;
+        // The word table the table was built from, and how many words it had.
+        private static Dictionary<string, AlienInfo> builtFrom;
+        private static int builtWords = -1;
         // Word, then slot as named by PositionalTranslations.SlotFor, then modifier string, to
-        // the number of encountered compounds.
+        // the number of compounds.
         private static Dictionary<string, Dictionary<string, Dictionary<string, int>>> slots =
             new Dictionary<string, Dictionary<string, Dictionary<string, int>>>();
         private static int version;
@@ -45,8 +39,8 @@ namespace CompoundTranslations
             return slots.TryGetValue(CompoundHint.Canonical(word), out var s) && s.Count > 0;
         }
 
-        // The most common modifier string of the encountered compounds where the word fills the
-        // slot, or "" when there are none.
+        // The most common modifier string of the compounds where the word fills the slot, or ""
+        // when there are none.
         internal static string Modifier(string word, string slot)
         {
             Refresh();
@@ -66,52 +60,29 @@ namespace CompoundTranslations
             return best;
         }
 
+        // Builds the table once per word table, which content packs can change when the game
+        // reads its text again.
         private static void Refresh()
         {
-            var dict = Global.savedata?.dict;
-            var keys = dict?.Count ?? 0;
-            if (dict == builtFrom && keys == builtKeys)
+            var words = Global.alien_text;
+            var count = words?.Count ?? 0;
+            if (words == builtFrom && count == builtWords)
             {
                 return;
             }
-            builtFrom = dict;
-            builtKeys = keys;
+            builtFrom = words;
+            builtWords = count;
             version++;
             slots = new Dictionary<string, Dictionary<string, Dictionary<string, int>>>();
-            var words = Global.alien_text;
-            if (dict == null || words == null)
+            if (words == null)
             {
                 return;
             }
-            var encountered = new HashSet<string>();
-            var queue = new Queue<string>();
-            foreach (var key in dict.Keys)
+            foreach (var kv in words)
             {
-                if (words.ContainsKey(key) && encountered.Add(key))
-                {
-                    queue.Enqueue(key);
-                }
-            }
-            var direct = encountered.Count;
-            while (queue.Count > 0)
-            {
-                var word = queue.Dequeue();
-                var info = words[word];
-                if (info.component == null)
-                {
-                    continue;
-                }
-                foreach (var c in info.component)
-                {
-                    var part = CompoundHint.Canonical(c);
-                    if (!string.IsNullOrEmpty(part) && words.ContainsKey(part) && encountered.Add(part))
-                    {
-                        queue.Enqueue(part);
-                    }
-                }
                 // Positions count only where hints use them: compounds of two parts, which
                 // CompoundHint.GetStructure keeps apart unless it reads them as one part repeated.
-                var structure = CompoundHint.GetStructure(word);
+                var structure = CompoundHint.GetStructure(kv.Key);
                 if (structure == null || structure.Repeat > 0)
                 {
                     continue;
@@ -132,11 +103,11 @@ namespace CompoundTranslations
                     {
                         bySlot[slot] = mods = new Dictionary<string, int>();
                     }
-                    var mod = info.struct_modifier ?? "";
+                    var mod = kv.Value.struct_modifier ?? "";
                     mods[mod] = mods.TryGetValue(mod, out var n) ? n + 1 : 1;
                 }
             }
-            Plugin.Log.LogDebug($"Encountered words: {direct} drawn, {encountered.Count} with their parts.");
+            Plugin.Log.LogDebug($"Compound positions: {slots.Count} words take a position in {count} words.");
         }
     }
 }

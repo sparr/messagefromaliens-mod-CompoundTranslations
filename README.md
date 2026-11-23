@@ -41,9 +41,9 @@ Here one translated phrase, `my run`, applies to a sequence of three glyphs.
 
 ## Position translations
 
-A glyph can have a different translation for each place it takes in a compound of two different words. A glyph's information panel, shown by right-clicking it, gets a new line above the definitions when the glyph takes a place in a compound you have encountered, underlined like a menu link, which will open the positional translation interface and indicate if it's already filled out.
+A glyph can have a different translation for each place it takes in a compound of two different words. A glyph's information panel, shown by right-clicking it, gets a new line above the definitions when the glyph takes a place in any of the game's compounds of two different words, underlined like a menu link, which will open the positional translation interface and indicate if it's already filled out.
 
-The new interface allows specifying a translation for a glyph that will be used in a compound word partial translation if the sub glyph appears in a particular position. The panel shows only the positions the glyph takes in compounds you have encountered: compounds the game has drawn for you anywhere, and the compounds inside them. An empty field shows, dimmed, what hints use in its place: the glyph's translation, or, for an untranslated compound, its own hint in brackets. Tab moves through the fields along with the glyph labels. With Interface Tweaks' keyboard shortcuts on, the fields follow its Tab order, one panel at a time, and Shift+Tab goes back through them.
+The new interface allows specifying a translation for a glyph that will be used in a compound word partial translation if the sub glyph appears in a particular position. The panel shows every position the glyph takes in the game's compounds of two different words, whether or not you have seen those compounds. An empty field shows, dimmed, what hints use in its place: the glyph's translation, or, for an untranslated compound, its own hint in brackets. Tab moves through the fields along with the glyph labels. With Interface Tweaks' keyboard shortcuts on, the fields follow its Tab order, one panel at a time, and Shift+Tab goes back through them.
 
 On a compound's information panel, the line that names its two parts labels each part with its translation for its place in that compound, when it has one, in place of its own translation. Editing that label edits the position translation. A part without one keeps its own label, and editing it edits its own translation.
 
@@ -51,7 +51,7 @@ Position translations are saved in your save slot alongside the game's own trans
 
 ![Screenshot as described](screenshot_positional.png)
 
-Here the glyph named `square` takes all six places in compounds the player has encountered. Four have position translations, such as `lid` for its place on top and `frame` for its place around another glyph. The two empty fields show, dimmed, the glyph's own translation, which hints use there instead. The title row's hint `frame - [8]` uses one of them.
+Here the glyph named `square` takes all six places in the game's compounds. Four have position translations, such as `lid` for its place on top and `frame` for its place around another glyph. The two empty fields show, dimmed, the glyph's own translation, which hints use there instead. The title row's hint `frame - [8]` uses one of them.
 
 ## Configuration
 

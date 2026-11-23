@@ -9,6 +9,7 @@
 - Sequence translations no longer form across empty cells, lists, conjunctions, or settings page choices.
 - Tab moves through position fields and run labels, following Interface Tweaks' order.
 - `?` counts as no translation.
+- The positions panel offers every position a glyph takes in the game's compounds, seen or not.
 - Fixed run label editing, the positions panel, and labels while translations are hidden.
 - Faster hint updates.
 

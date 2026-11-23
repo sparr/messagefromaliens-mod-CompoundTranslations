@@ -20,8 +20,8 @@ namespace CompoundTranslations
     // Plugin.PositionGlyphs, and whose text is Marker. Draw.Write does not draw a bracketed token
     // that is not at the start of a line. That panel shows each relation drawn both ways, the word
     // in the normal color and a placeholder square in the finished color, each with a field for
-    // that position's translation. Only positions the word takes in compounds the player has
-    // encountered are shown, and only words with such positions get the button. The drawings are
+    // that position's translation. Only positions the word takes in the game's two-part
+    // compounds are shown, and only words with such positions get the button. The drawings are
     // built with the game's own composition code and drawn as bare stroke shapes, so they never
     // become words.
     //
@@ -89,7 +89,7 @@ namespace CompoundTranslations
         internal static void Decorate(string title, ref string info)
         {
             // While translations are hidden, the panel's fields are not drawn, so no button.
-            if (Enabled && Plugin.Visible && IsWordInfo(title, info) && !info.Contains(ButtonMarker) && EncounteredPositions.HasAny(title))
+            if (Enabled && Plugin.Visible && IsWordInfo(title, info) && !info.Contains(ButtonMarker) && CompoundPositions.HasAny(title))
             {
                 var i = info.IndexOf(BlankLine, StringComparison.Ordinal);
                 if (i >= 0)
@@ -245,21 +245,21 @@ namespace CompoundTranslations
         private static bool lastVisible = true;
         private static int lastWins = -1;
         private static object lastSave;
-        private static int lastEncountered = -1;
+        private static int lastPositions = -1;
 
         internal static void Tick()
         {
             try
             {
                 var wins = Global.savedata?.win?.Count ?? 0;
-                // Drawing a word for the first time can give its parts positions.
-                var encountered = Enabled ? EncounteredPositions.Version : lastEncountered;
-                if (Plugin.Visible != lastVisible || wins != lastWins || !ReferenceEquals(Global.savedata, lastSave) || encountered != lastEncountered)
+                // A content pack's word table, read again, can change the words with positions.
+                var positions = Enabled ? CompoundPositions.Version : lastPositions;
+                if (Plugin.Visible != lastVisible || wins != lastWins || !ReferenceEquals(Global.savedata, lastSave) || positions != lastPositions)
                 {
                     lastVisible = Plugin.Visible;
                     lastWins = wins;
                     lastSave = Global.savedata;
-                    lastEncountered = encountered;
+                    lastPositions = positions;
                     RefreshHistory();
                 }
                 if (dirty || LeftPanelChanged())
@@ -400,11 +400,11 @@ namespace CompoundTranslations
             for (var i = 0; i < Variants.Length; i++)
             {
                 var v = Variants[i];
-                if (!EncounteredPositions.Has(canonical, v.Slot))
+                if (!CompoundPositions.Has(canonical, v.Slot))
                 {
                     continue;
                 }
-                DrawCompound(m, word, v.Relation, v.WordFirst, v.X, v.Y, EncounteredPositions.Modifier(canonical, v.Slot));
+                DrawCompound(m, word, v.Relation, v.WordFirst, v.X, v.Y, CompoundPositions.Modifier(canonical, v.Slot));
                 while (fields.Count <= i)
                 {
                     var f = new Field();
